@@ -22,6 +22,8 @@ def sql_query_conn(dbname='', basepath=''):
     # C:\Users\sarma\Dropbox\Water Data Challenge 2022\wdc_2022_test.db
     # C:\Users\sarma\Dropbox\Water Data Challenge 2022\wdc_2022_active.db
     # C:\Users\sarma\OneDrive\Documents\GitHub\Regulatory-Enforcement-Water-Data-Challenge-2022
+    print(getpass.getuser())
+
     db_path = ''
     if len(basepath) == 0 and len(dbname) == 0:
         if getpass.getuser() == 'sarma':
@@ -61,6 +63,7 @@ def sql_query_conn(dbname='', basepath=''):
         BASE_DIR = basepath
         db_path = os.path.join(BASE_DIR, dbname)
     conn = sqlite3.connect(db_path)
+    print(repo_head_name)
     return conn
 
 

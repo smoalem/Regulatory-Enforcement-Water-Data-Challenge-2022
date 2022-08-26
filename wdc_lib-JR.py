@@ -71,9 +71,12 @@ def sql_query_conn(dbname='', basepath=''):
 
 conn = sql_query_conn() # vs conn in line 67
 df_contam = pd.read_sql_query('SELECT * from contam_info', conn) #pd=pandas
+df_facilities = pd.read_sql_query('SELECT * from facilities', conn)
 conn.close()
 print(df_contam)
-
+print(df_facilities)
+print(df_facilities.columns.values)
+print(df_facilities['facility_type'].tolist())
 
 def water_system_type(smplpttype):
     water_system = {"GW": ("WL", "SP", "SS", "CC", "CS",
@@ -81,17 +84,18 @@ def water_system_type(smplpttype):
     water_type = ''
     for k, it in water_system.items():
         if smplpttype in it:
-            water_type = k
+            water_type = k #known?
         else:
             pass
     if water_type == '':
         water_type = 'pswt'
     return water_type
-    print(water_type)
 # print(water_system_type(('IN')))
 # print(water_system_type(('IG')))
 # print(water_system_type(('CC')))
 
+for f in df_facilities['facility_type'].tolist():
+    print(water_system_type(f))
 
 def grab_water_results(contam_id="", fac_id=""):
     conn = sql_query_conn()
@@ -101,10 +105,10 @@ def grab_water_results(contam_id="", fac_id=""):
     query_sec = ''' WHERE fac_id = ''' + fac_id + (''' AND contam_id = ''' + contam_id) * (
         len(contam_id) > 0) + " AND fac_id IS NOT NULL AND contam_id IS NOT NULL"
     query = query_base + query_sec
-    df = pd.read_sql_query(query, conn)
+    df = pd.read_sql_query(query, conn) # first definition of df
     if len(df.index) == 0:
         df = pd.DataFrame({'id': [], 'fac_id': [], 'contam_id': [
-        ], 'result_xldate': [], 'int_res': []})
+        ], 'result_xldate': [], 'int_res': []}) # alternate definition of df, on the condition that len=0
     conn.close()
     df_final = df[(df['int_res'] != 'NO DATA') & (df['int_res'] != 'NO URL')]
     df_final['int_res'] = df_final['int_res'].astype(float)
@@ -154,4 +158,3 @@ def create_index(table_name, **index_names):
     except ValueError:
         print("Error happened")
 df_contam.to_excel(r'C:\Users\Jessa Rego\Documents\Regulatory-Enforcement-Water-Data-Challenge-2022\Vapyr-df_contam.xlsx')
-# DIDN'T WORK df_final.to_excel(r'C:\Users\Jessa Rego\Documents\Regulatory-Enforcement-Water-Data-Challenge-2022\Vapyr-df_final.xlsx')

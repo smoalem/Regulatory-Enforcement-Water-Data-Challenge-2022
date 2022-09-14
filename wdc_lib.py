@@ -19,11 +19,6 @@ from pygit2 import Repository
 
 
 def sql_query_conn(dbname='', basepath=''):
-    # C:\Users\sarma\Dropbox\Water Data Challenge 2022\wdc_2022_test.db
-    # C:\Users\sarma\Dropbox\Water Data Challenge 2022\wdc_2022_active.db
-    # C:\Users\sarma\OneDrive\Documents\GitHub\Regulatory-Enforcement-Water-Data-Challenge-2022
-    print(getpass.getuser())
-
     db_path = ''
     if len(basepath) == 0 and len(dbname) == 0:
         if getpass.getuser() == 'sarma':
@@ -46,13 +41,13 @@ def sql_query_conn(dbname='', basepath=''):
             else:
                 print('New branch must be registered')
                 raise OSError
-        elif getpass.getuser() == 'jessa':  # update
+        elif getpass.getuser() == 'Jessa Rego':  # update
             repo_head_name = Repository(
-                'C:/Users/jessa/Desktop/VapyrApp').head.name  # update
+                'C:/Users/Jessa Rego/Desktop/VapyrApp').head.name  # update
             if repo_head_name == 'refs/heads/Development':
-                db_path = r'C:\Users\jessa\Dropbox\Water Data Challenge 2022\wdc_2022_test.db'  # update
+                db_path = r'C:\Users\Jessa Rego\Dropbox\Water Data Challenge 2022\wdc_2022_test.db'
             elif repo_head_name == 'refs/heads/Production':
-                db_path = r'C:\Users\jessa\Dropbox\Water Data Challenge 2022\wdc_2022_active.db'  # update
+                db_path = r'C:\Users\Jessa Rego\Dropbox\Water Data Challenge 2022\wdc_2022_active.db'
             else:
                 print('New branch must be registered')
                 raise OSError
@@ -63,14 +58,13 @@ def sql_query_conn(dbname='', basepath=''):
         BASE_DIR = basepath
         db_path = os.path.join(BASE_DIR, dbname)
     conn = sqlite3.connect(db_path)
-    print(repo_head_name)
     return conn
 
 
-conn = sql_query_conn()
-df_contam = pd.read_sql_query('SELECT * from contam_info', conn)
-conn.close()
-print(df_contam)
+# conn = sql_query_conn()
+# df_contam = pd.read_sql_query('SELECT * from contam_info', conn)
+# conn.close()
+# print(df_contam)
 
 
 def water_system_type(smplpttype):

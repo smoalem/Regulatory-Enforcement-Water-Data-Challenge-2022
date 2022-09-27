@@ -1,0 +1,12 @@
+google open data
+
+don't make it too granular but not too aggregated
+RDS - binary-fastest data storage for RDS
+
+aes(x, y) titles x and y bars
+
+functions will reload everything in the input despite vlaues and inputs that are uninvolved
+with reactive function 
+values and input will only change and stores info based on what the user shifts around
+
+

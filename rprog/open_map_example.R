@@ -9,7 +9,7 @@ library(dplyr)    # alternatively, this also loads %>%
 library(jsonlite)
 
 # url <- "C:/Users/jheaf/Dropbox/Water Data Challenge 2022/GIS/water_system_with_scores.geojson"
-url <- "C:/Users/jheaf/Dropbox/Water Data Challenge 2022/new_export_test.geojson"
+url <- "C:/Users/user/Documents/GitHub/Regulatory-Enforcement-Water-Data-Challenge-2022/new_export_test.geojson"
 
 res <- readOGR(dsn = url)
 # geojson <- jsonLite::readLines(url) %>%
@@ -18,8 +18,8 @@ res <- readOGR(dsn = url)
 
 
 
-leaflet() %>% 
+leaflet(res) %>% 
   addTiles() %>%
-  setView(lng = -117.3884190, lat = 34.1776714, zoom = 10) %>% 
-  addGeoJSON(geojson = res)
-
+  addPolylines(fillColor = "red") %>%
+  addPolygons(fillColor = "yellow") %>%
+  setView(lng = -119.417931, lat = 36.778259, zoom = 5)

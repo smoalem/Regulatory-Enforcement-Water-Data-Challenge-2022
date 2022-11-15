@@ -12,18 +12,6 @@ library(jsonlite)
 library(rgeos)
 #
 
-url <- "C:/Users/jheaf/Documents/Regulatory-Enforcement-Water-Data-Challenge-2022/removed_neg_scores.geojson"
-res <- readOGR(dsn = url, layer="removed_neg_scores")
-# centers <- data.frame(gCentroid(res, byid = TRUE))
-# res$lng <- centers$x
-# res$lat <- centers$y
-pal <- colorNumeric(
-  palette = "Blues",
-  domain = res$red_int
-)
-# 
-
-binpal <- colorBin("Blues", res$red_int, 10, pretty = FALSE)
 
 
 # #
@@ -64,7 +52,21 @@ ui <- dashboardPage(
 # Server
 
 server <- function(input, output) {
-### Map 
+  ### dataframe load
+  # map_switch <- reactiveValue()
+  input$complianceOverageInput <- reactiveValues(input$complianceOverageInput )
+  url <- "C:/Users/jheaf/Documents/Regulatory-Enforcement-Water-Data-Challenge-2022/removed_neg_scores.geojson"
+  res <- readOGR(dsn = url, layer="removed_neg_scores")
+  if(input$complianceOverageInput == "Compliance Score") {
+    binpal <- colorBin("Blues", res$red_int, 10, pretty = FALSE)
+    
+  } else {
+    binpal <- colorBin("Greens", res$red_int, 10, pretty = FALSE)
+    
+  }
+  
+  
+  ### Map 
   map <- leaflet(res) %>%
       addTiles() %>%
       addPolygons(
@@ -87,22 +89,21 @@ server <- function(input, output) {
       ) %>%
       setView(lng = -119.417931, lat = 36.778259, zoom = 5)
 
-
   output$camap <- renderLeaflet(map)
 ### Render UI
-  output$complianceOverage <- renderUI({
+  output$complianceOverageOutput <- renderUI({
     selectInput(
-      inputId = "complianceOverage", 
+      inputId = "complianceOverageInput", 
       label = strong("Select Score Type:", style = "font-family: 'arial'; font-si28pt"),
       choices =  c("Compliance Score", "Overage Score"),
-      selected = choices[1]
+      selected = "Compliance Score"
     )
   })
   
   output$sidebar <- renderUI({
     if( input$tab_selected == "Map"){
       div(
-        uiOutput("complianceOverage")
+        uiOutput("complianceOverageOutput")
       )
     } 
     

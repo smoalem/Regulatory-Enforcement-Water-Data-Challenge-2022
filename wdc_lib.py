@@ -34,10 +34,10 @@ def sql_query_conn(dbname='', basepath=''):
                 raise OSError
         elif getpass.getuser() == 'hoonje92':
             repo_head_name = Repository(
-                'C:/Users/jheaf/Desktop/Regulatory-Enforcement-Water-Data-Challenge-2022').head.name
+                'C:/Users/jheaf/Documents\Regulatory-Enforcement-Water-Data-Challenge-2022').head.name
             if repo_head_name == 'refs/heads/Development':
                 db_path = r'C:\Users\jheaf\Dropbox\Water Data Challenge 2022\wdc_2022_test.db'
-            elif repo_head_name == 'refs/heads/Production':
+            elif repo_head_name == 'refs/heads/main':
                 db_path = r'C:\Users\jheaf\Dropbox\Water Data Challenge 2022\wdc_2022_active.db'
             else:
                 print('New branch must be registered')
@@ -47,7 +47,7 @@ def sql_query_conn(dbname='', basepath=''):
                 'C:/Users/Jessa Rego/Desktop/VapyrApp').head.name  # update
             if repo_head_name == 'refs/heads/Development':
                 db_path = r'C:\Users\Jessa Rego\Dropbox\Water Data Challenge 2022\wdc_2022_test.db'
-            elif repo_head_name == 'refs/heads/Production':
+            elif repo_head_name == 'refs/heads/main':
                 db_path = r'C:\Users\Jessa Rego\Dropbox\Water Data Challenge 2022\wdc_2022_active.db'
             else:
                 print('New branch must be registered')

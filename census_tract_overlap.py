@@ -296,6 +296,11 @@ if __name__ == '__main__':
 # Total: 2268. No overlap: 1271. Null geometry: 5.
 
 
+# Sarmad Test 11/15/2022:
+# Time so far: 4935.3227704. Counter: 2112. Average time per system: 2.3368005541666665.
+# Total: 2112. No overlap: 1157. Null geometry: 5.
+
+
 #     raise ValueError
 # raise ValueError
 

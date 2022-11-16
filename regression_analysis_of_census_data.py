@@ -31,11 +31,14 @@ import concurrent.futures
 
 def linear_regression(X, y):
     # # # Multiple Linear Regression:
+
     # Splitting the dataset into the Training set and Test set
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=0)
+
     # Training the Multiple Linear Regression model on the Training set
     regressor = LinearRegression()
+
     regressor.fit(X_train, y_train)
     # Predicting the Test set results
     y_pred = regressor.predict(X_test)
@@ -52,9 +55,11 @@ def linear_regression(X, y):
 
 def polynomial_regression(X, y):
     # # # Polynomial Regression:
+
     # Splitting the dataset into the Training set and Test set
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=0)
+
     # Training the Polynomial Regression model on the Training dataset
     poly_reg = PolynomialFeatures(degree=2)
     X_poly = poly_reg.fit_transform(X_train)
@@ -96,9 +101,11 @@ def support_vector_regression(X, y):
 
 def decision_tree_regression(X, y):
     # # # Decision Tree:
+
     # Splitting the dataset into the Training set and Test set
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=0)
+
     # Training the Decision Tree Regression model on the Training set
     regressor = DecisionTreeRegressor(random_state=0)
     regressor.fit(X_train, y_train)
@@ -183,6 +190,14 @@ def data_and_regression_selector(data, independent_sets, dependent_variable):
     # # data_setup = time.perf_counter()
 
     independent_variables = ', '.join(independent_sets)
+
+    # X_train, X_test, y_train, y_test = train_test_split(
+    #     X, y, test_size=0.2, random_state=0)
+
+    # print(X_train)
+    # print(y_train)
+    # raise ValueError
+
     # start_regs = time.perf_counter()
     linear = linear_regression(X, y)
     # linear_fin = time.perf_counter()
@@ -234,6 +249,35 @@ if __name__ == '__main__':
         df_census, df_wsp_and_scores, left_on='sabl_pwsid', right_on='water_system_number', how='left')
     df_wsp_score_census = df_wsp_score_census[(df_wsp_score_census['ave_red_lean_score'] != 'PMD') & (
         df_wsp_score_census['ave_red_lean_score'] != 'TBD') & (df_wsp_score_census['ave_red_lean_score'] != 'NA')]
+    # df_wsp_score_census = df_wsp_score_census[(
+    #     df_wsp_score_census['ave_red_lean_score'] != 'PMD')]
+    # df_wsp_score_census = df_wsp_score_census[(
+    #     df_wsp_score_census['ave_red_lean_score'] != 'TBD')]
+    # df_wsp_score_census = df_wsp_score_census[(
+    #     df_wsp_score_census['ave_red_lean_score'] != 'NA')]
+
+    # conn = wdc.sql_query_conn()
+    # df_wsp_score_census.to_sql('test_for_random_nan', conn,
+    #                            if_exists='replace', index=False)
+    # conn.close()
+    # raise ValueError
+
+    # red_lean_score_list = df_wsp_score_census['ave_red_lean_score'].tolist()
+    # red_lean_score_list = [float(x) for x in red_lean_score_list]
+    # print(red_lean_score_list)
+    # print(np.nan in red_lean_score_list)
+    # baddies = []
+    # for score in red_lean_score_list:
+    #     if np.isnan(score):
+    #         baddies.append(score)
+    #         print(score)
+    #         print(red_lean_score_list.index(score))
+    #         print(df_wsp_score_census.loc[red_lean_score_list.index(
+    #             score), 'ave_red_lean_score'])
+    # print(baddies)
+    # print(len(baddies))
+    # raise ValueError
+
     df_wsp_score_census.drop(['n_100pct_pov_lvl', 'n_101_149pct_pov_lvl', 'n_150pct_pov_lvl', 'id',
                              'pserved', 'type', 'primary_source_water_type', 'ur', 'water_sy_1', 'pop100'], axis=1, inplace=True)
     df_wsp_score_census = df_wsp_score_census[['n_race', 'n_white_alone', 'n_black_alone', 'n_ai_and_an_alone', 'n_asian_alone', 'n_nh_and_opi_alone', 'n_other_alone', 'n_two_or_more_races',
@@ -372,30 +416,36 @@ if __name__ == '__main__':
     print(
         f'Powerset has {len(var_combinations)} values and took: {time.perf_counter()-start}')
 
-    # test = data_and_regression_selector(dataset, [
-    #                                     'hh_size', 'bdeg', 'insurance', 'timeline_characteristics', 'population'], 'compliance_score')
+    # print(dataset)
+    # print(type(dataset))
+    # print(dataset.columns.to_list())
+    # raise ValueError
+    test = data_and_regression_selector(dataset, [
+                                        'hh_size', 'bdeg', 'insurance', 'timeline_characteristics', 'population'], 'compliance_score')
+    print(test)
+    raise ValueError
 
     # print(var_combinations[-1])
     # print(list(var_combinations[-1]))
     # test = data_and_regression_selector(
     #     dataset, var_combinations[-1], 'compliance_score')
-    print(dataset)
-    print(list(dataset['regulating'].unique()))
-    regulators = ['DISTRICT_13_-_SAN_BERNARDINO', 'DISTRICT_06_-_SANTA_BARBARA', 'DISTRICT_02_-_LASSEN', 'DISTRICT_18_-_SONOMA', 'DISTRICT_17_-_SANTA_CLARA', 'DISTRICT_23_-_FRESNO', 'DISTRICT_11_-_MERCED', 'DISTRICT_04_-_SAN_FRANCISCO', 'DISTRICT_09_-_SACRAMENTO', 'LPA64_-_SACRAMENTO_COUNTY', 'DISTRICT_16_-_CENTRAL', 'DISTRICT_05_-_MONTEREY', 'DISTRICT_12_-_VISALIA', 'DISTRICT_22_-_ANGELES', 'DISTRICT_08_-_SANTA_ANA', 'DISTRICT_03_-_MENDOCINO', 'LPA57_-_MONTEREY_COUNTY', 'DISTRICT_15_-_METROPOLITAN', 'DISTRICT_19_-_TEHACHAPI', 'DISTRICT_10_-_STOCKTON', 'DISTRICT_21_-_VALLEY', 'DISTRICT_07_-_HOLLYWOOD', 'DISTRICT_24_-_TULARE',
-                  'DISTRICT_01_-_KLAMATH', 'DISTRICT_25_-_MARIN', 'LPA67_-_SAN_DIEGO_COUNTY', 'DISTRICT_14_-_SAN_DIEGO', 'DISTRICT_20_-_RIVERSIDE', 'LPA66_-_SAN_BERNARDINO_COUNTY', 'LPA69_-_SAN_JOAQUIN_COUNTY', 'LPA72_-_SANTA_BARBARA_COUNTY', 'LPA49_-_LA_COUNTY', 'LPA75_-_SHASTA_COUNTY', 'LPA70_-_SAN_LUIS_OBISPO_COUNTY', 'LPA61_-_PLACER_COUNTY', 'LPA74_-_SANTA_CRUZ_COUNTY', 'LPA82_-_TEHAMA_COUNTY', 'LPA46_-_KINGS_COUNTY', 'LPA80_-_STANISLAUS_COUNTY', 'LPA43_-_IMPERIAL_COUNTY', 'LPA34_-_BUTTE_COUNTY', 'LPA63_-_RIVERSIDE_COUNTY', 'LPA50_-_MADERA_COUNTY', 'LPA62_-_PLUMAS_COUNTY', 'LPA37_-_CONTRA_COSTA_COUNTY', 'LPA87_-_YOLO_COUNTY']
-    counter = 0
-    for reg in regulators:
-        reg_df = dataset[dataset['regulating'] == reg]
-        print(reg_df['ave_red_lean_score'].mean())
+    # print(dataset)
+    # print(list(dataset['regulating'].unique()))
+    # regulators = ['DISTRICT_13_-_SAN_BERNARDINO', 'DISTRICT_06_-_SANTA_BARBARA', 'DISTRICT_02_-_LASSEN', 'DISTRICT_18_-_SONOMA', 'DISTRICT_17_-_SANTA_CLARA', 'DISTRICT_23_-_FRESNO', 'DISTRICT_11_-_MERCED', 'DISTRICT_04_-_SAN_FRANCISCO', 'DISTRICT_09_-_SACRAMENTO', 'LPA64_-_SACRAMENTO_COUNTY', 'DISTRICT_16_-_CENTRAL', 'DISTRICT_05_-_MONTEREY', 'DISTRICT_12_-_VISALIA', 'DISTRICT_22_-_ANGELES', 'DISTRICT_08_-_SANTA_ANA', 'DISTRICT_03_-_MENDOCINO', 'LPA57_-_MONTEREY_COUNTY', 'DISTRICT_15_-_METROPOLITAN', 'DISTRICT_19_-_TEHACHAPI', 'DISTRICT_10_-_STOCKTON', 'DISTRICT_21_-_VALLEY', 'DISTRICT_07_-_HOLLYWOOD', 'DISTRICT_24_-_TULARE',
+    #               'DISTRICT_01_-_KLAMATH', 'DISTRICT_25_-_MARIN', 'LPA67_-_SAN_DIEGO_COUNTY', 'DISTRICT_14_-_SAN_DIEGO', 'DISTRICT_20_-_RIVERSIDE', 'LPA66_-_SAN_BERNARDINO_COUNTY', 'LPA69_-_SAN_JOAQUIN_COUNTY', 'LPA72_-_SANTA_BARBARA_COUNTY', 'LPA49_-_LA_COUNTY', 'LPA75_-_SHASTA_COUNTY', 'LPA70_-_SAN_LUIS_OBISPO_COUNTY', 'LPA61_-_PLACER_COUNTY', 'LPA74_-_SANTA_CRUZ_COUNTY', 'LPA82_-_TEHAMA_COUNTY', 'LPA46_-_KINGS_COUNTY', 'LPA80_-_STANISLAUS_COUNTY', 'LPA43_-_IMPERIAL_COUNTY', 'LPA34_-_BUTTE_COUNTY', 'LPA63_-_RIVERSIDE_COUNTY', 'LPA50_-_MADERA_COUNTY', 'LPA62_-_PLUMAS_COUNTY', 'LPA37_-_CONTRA_COSTA_COUNTY', 'LPA87_-_YOLO_COUNTY']
+    # counter = 0
+    # for reg in regulators:
+    #     reg_df = dataset[dataset['regulating'] == reg]
+    #     print(reg_df['ave_red_lean_score'].mean())
 
-        counter += len(dataset[dataset['regulating'] == reg])
-    print(counter)
-    print(len(dataset))
-    raise ValueError
-    test = data_and_regression_selector(
-        dataset, ['timeline_characteristics'], 'compliance_score')
-    print(test)
-    raise ValueError
+    #     counter += len(dataset[dataset['regulating'] == reg])
+    # print(counter)
+    # print(len(dataset))
+    # raise ValueError
+    # test = data_and_regression_selector(
+    #     dataset, ['timeline_characteristics'], 'compliance_score')
+    # print(test)
+    # raise ValueError
     # var_combinations = var_combinations[-20:]
     # var_combinations = var_combinations[:1]
 

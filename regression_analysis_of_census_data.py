@@ -34,7 +34,7 @@ def linear_regression(X, y):
 
     # Splitting the dataset into the Training set and Test set
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=0)
+        X, y, test_size=0.2, random_state=83)
 
     # Training the Multiple Linear Regression model on the Training set
     regressor = LinearRegression()
@@ -58,7 +58,7 @@ def polynomial_regression(X, y):
 
     # Splitting the dataset into the Training set and Test set
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=0)
+        X, y, test_size=0.2, random_state=83)
 
     # Training the Polynomial Regression model on the Training dataset
     poly_reg = PolynomialFeatures(degree=2)
@@ -80,7 +80,7 @@ def support_vector_regression(X, y):
 
     # Splitting the dataset into the Training set and Test set
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=0)
+        X, y, test_size=0.2, random_state=83)
     # Feature Scaling
     sc_X = StandardScaler()
     sc_y = StandardScaler()
@@ -104,7 +104,7 @@ def decision_tree_regression(X, y):
 
     # Splitting the dataset into the Training set and Test set
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=0)
+        X, y, test_size=0.2, random_state=83)
 
     # Training the Decision Tree Regression model on the Training set
     regressor = DecisionTreeRegressor(random_state=0)
@@ -122,7 +122,7 @@ def random_forest_regression(X, y):
     # # # Random Forest:
     # Splitting the dataset into the Training set and Test set
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=0)
+        X, y, test_size=0.2, random_state=83)
     # Training the Random Forest Regression model on the whole dataset
     regressor = RandomForestRegressor(n_estimators=100, random_state=0)
     regressor.fit(X_train, y_train)
@@ -168,8 +168,6 @@ def data_and_regression_selector(data, independent_sets, dependent_variable):
 
     ind_var_columns_list = filtered_data.columns.to_list()
 
-    # fin_vars = time.perf_counter()
-
     # Encoding categorical data
     if 'ave_target_timeline' in ind_var_columns_list:
         ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(), [
@@ -186,8 +184,6 @@ def data_and_regression_selector(data, independent_sets, dependent_variable):
     imputer.fit(X[:])  # Call fit method of imputer to create averages for all columns. Arguments specify all rows and the Age + Salary columns (ignore country column to avoid error since country is all strings)
     # Transform method then does the replacement of all the nan with mean
     X[:] = imputer.transform(X[:])
-
-    # # data_setup = time.perf_counter()
 
     independent_variables = ', '.join(independent_sets)
 
@@ -249,34 +245,6 @@ if __name__ == '__main__':
         df_census, df_wsp_and_scores, left_on='sabl_pwsid', right_on='water_system_number', how='left')
     df_wsp_score_census = df_wsp_score_census[(df_wsp_score_census['ave_red_lean_score'] != 'PMD') & (
         df_wsp_score_census['ave_red_lean_score'] != 'TBD') & (df_wsp_score_census['ave_red_lean_score'] != 'NA')]
-    # df_wsp_score_census = df_wsp_score_census[(
-    #     df_wsp_score_census['ave_red_lean_score'] != 'PMD')]
-    # df_wsp_score_census = df_wsp_score_census[(
-    #     df_wsp_score_census['ave_red_lean_score'] != 'TBD')]
-    # df_wsp_score_census = df_wsp_score_census[(
-    #     df_wsp_score_census['ave_red_lean_score'] != 'NA')]
-
-    # conn = wdc.sql_query_conn()
-    # df_wsp_score_census.to_sql('test_for_random_nan', conn,
-    #                            if_exists='replace', index=False)
-    # conn.close()
-    # raise ValueError
-
-    # red_lean_score_list = df_wsp_score_census['ave_red_lean_score'].tolist()
-    # red_lean_score_list = [float(x) for x in red_lean_score_list]
-    # print(red_lean_score_list)
-    # print(np.nan in red_lean_score_list)
-    # baddies = []
-    # for score in red_lean_score_list:
-    #     if np.isnan(score):
-    #         baddies.append(score)
-    #         print(score)
-    #         print(red_lean_score_list.index(score))
-    #         print(df_wsp_score_census.loc[red_lean_score_list.index(
-    #             score), 'ave_red_lean_score'])
-    # print(baddies)
-    # print(len(baddies))
-    # raise ValueError
 
     df_wsp_score_census.drop(['n_100pct_pov_lvl', 'n_101_149pct_pov_lvl', 'n_150pct_pov_lvl', 'id',
                              'pserved', 'type', 'primary_source_water_type', 'ur', 'water_sy_1', 'pop100'], axis=1, inplace=True)
@@ -420,10 +388,10 @@ if __name__ == '__main__':
     # print(type(dataset))
     # print(dataset.columns.to_list())
     # raise ValueError
-    test = data_and_regression_selector(dataset, [
-                                        'hh_size', 'bdeg', 'insurance', 'timeline_characteristics', 'population'], 'compliance_score')
-    print(test)
-    raise ValueError
+    # test = data_and_regression_selector(dataset, [
+    #                                     'hh_size', 'bdeg', 'insurance', 'timeline_characteristics', 'population'], 'compliance_score')
+    # print(test)
+    # raise ValueError
 
     # print(var_combinations[-1])
     # print(list(var_combinations[-1]))
@@ -495,7 +463,7 @@ if __name__ == '__main__':
     sortby = SortKey.CUMULATIVE
     ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
     ps.print_stats()
-    # print(s.getvalue())
+    print(s.getvalue())
 
 
 # Powerset has 2048 values and took: 2.832997000001342

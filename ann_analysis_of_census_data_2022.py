@@ -33,6 +33,105 @@ import concurrent.futures
 # Dec 1st - A1 - A10 in vapyr and the cesus steps to refresh the data and feed into neural network
 
 
+# from sklearn.metrics import mean_absolute_percentage_error
+
+# # Defining a function to find the best parameters for ANN
+# def FunctionFindBestParams(X_train, y_train, X_test, y_test):
+
+#     # Defining the list of hyper parameters to try
+#     batch_size_list=[1, 5, 10, 15, 20, 32]
+#     epoch_list  =   [100, 1000, 2000, 10000]
+
+#     import pandas as pd
+#     SearchResultsData=pd.DataFrame(columns=['TrialNumber', 'Parameters', 'Accuracy'])
+
+#     # initializing the trials
+#     TrialNumber=0
+#     for batch_size_trial in batch_size_list:
+#         for epochs_trial in epoch_list:
+#             TrialNumber+=1
+#             # create ANN model
+#             model = Sequential()
+#             # Defining the first layer of the model
+#             model.add(Dense(units=6, input_dim=X_train.shape[1], kernel_initializer='normal', activation='relu'))
+
+#             # Defining the Second layer of the model
+#             model.add(Dense(units=6, kernel_initializer='normal', activation='relu'))
+
+#             # The output neuron is a single fully connected node
+#             # Since we will be predicting a single number
+#             model.add(Dense(1, kernel_initializer='normal'))
+
+#             # Compiling the model
+#             model.compile(loss='mean_squared_error', optimizer='adam')
+
+#             # Fitting the ANN to the Training set
+#             model.fit(X_train, y_train ,batch_size = batch_size_trial, epochs = epochs_trial, verbose=0)
+
+#             MAPE = 100 * mean_absolute_percentage_error(y_test, model.predict(X_test))
+
+
+#             # printing the results of the current iteration
+#             print(TrialNumber, 'Parameters:','batch_size:', batch_size_trial,'-', 'epochs:',epochs_trial, 'Accuracy:', 100-MAPE)
+
+#             SearchResultsData=SearchResultsData.append(pd.DataFrame(data=[[TrialNumber, str(batch_size_trial)+'-'+str(epochs_trial), 100-MAPE]],
+#                                                                     columns=['TrialNumber', 'Parameters', 'Accuracy'] ))
+#     return(SearchResultsData)
+
+
+from sklearn.metrics import mean_absolute_percentage_error
+
+# Defining a function to find the best parameters for ANN
+
+
+def FunctionFindBestParams(X_train, y_train, X_test, y_test):
+
+    # Defining the list of hyper parameters to try
+    batch_size_list = [1, 5, 10, 15, 20, 32]
+    epoch_list = [100, 1000, 2000, 10000]
+
+    import pandas as pd
+    SearchResultsData = pd.DataFrame(
+        columns=['TrialNumber', 'Parameters', 'Accuracy'])
+
+    # initializing the trials
+    TrialNumber = 0
+    for batch_size_trial in batch_size_list:
+        for epochs_trial in epoch_list:
+            TrialNumber += 1
+            # create ANN model
+            model = Sequential()
+            # Defining the first layer of the model
+            model.add(Dense(
+                units=6, input_dim=X_train.shape[1], kernel_initializer='normal', activation='relu'))
+
+            # Defining the Second layer of the model
+            model.add(
+                Dense(units=6, kernel_initializer='normal', activation='relu'))
+
+            # The output neuron is a single fully connected node
+            # Since we will be predicting a single number
+            model.add(Dense(1, kernel_initializer='normal'))
+
+            # Compiling the model
+            model.compile(loss='mean_squared_error', optimizer='adam')
+
+            # Fitting the ANN to the Training set
+            model.fit(X_train, y_train, batch_size=batch_size_trial,
+                      epochs=epochs_trial, verbose=0)
+
+            MAPE = 100 * \
+                mean_absolute_percentage_error(y_test, model.predict(X_test))
+
+            # printing the results of the current iteration
+            print(TrialNumber, 'Parameters:', 'batch_size:', batch_size_trial,
+                  '-', 'epochs:', epochs_trial, 'Accuracy:', 100-MAPE)
+
+            SearchResultsData = SearchResultsData.append(pd.DataFrame(data=[[TrialNumber, str(batch_size_trial)+'-'+str(epochs_trial), 100-MAPE]],
+                                                                      columns=['TrialNumber', 'Parameters', 'Accuracy']))
+    return(SearchResultsData)
+
+
 def random_forest_regression(X, y):
     # # # Random Forest:
     # Splitting the dataset into the Training set and Test set
@@ -100,7 +199,24 @@ def dataset_filter(data, independent_sets, dependent_variable):
     # Transform method then does the replacement of all the nan with mean
     X[:] = imputer.transform(X[:])
 
-    return [filtered_data.columns.to_list, X, y]
+    return [ind_var_columns_list, X, y]
+
+
+def random_forest_regression(X, y):
+    # # # Random Forest:
+    # Splitting the dataset into the Training set and Test set
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=83)
+    # Training the Random Forest Regression model on the whole dataset
+    regressor = RandomForestRegressor(n_estimators=100, random_state=0)
+    regressor.fit(X_train, y_train)
+    # Predicting the Test set results
+    y_pred = regressor.predict(X_test)
+    np.set_printoptions(precision=2)
+    # print(np.concatenate((y_pred.reshape(len(y_pred),1), y_test.reshape(len(y_test),1)),1))
+    r2 = r2_score(y_test, y_pred)
+    adj_r2 = 1-(1-r2)*(len(y)-1)/(len(y)-1-X.shape[1])
+    return [r2, adj_r2]
 
 
 if __name__ == '__main__':
@@ -260,8 +376,8 @@ if __name__ == '__main__':
     # best r2 for compliance_score was with random forest on ['hh_size', 'bdeg', 'insurance', 'gw_sw', 'timeline_characteristics']
     # best adj_r2 for compliance_score was with random forest on ['hh_size', 'insurance', 'gw_sw', 'timeline_characteristics', 'area']
     # if you want all variables EXCEPT for regulating ['race', 'hh_size', 'bdeg', 'hh_income', 'hh_own', 'rent_as_pct', 'insurance', 'gw_sw', 'timeline_characteristics', 'area', 'population']
-    filtered_data = dataset_filter(dataset, independent_sets=[
-        'hh_size', 'bdeg', 'insurance', 'gw_sw', 'timeline_characteristics'], dependent_variable='compliance_score')
+    filtered_data = dataset_filter(dataset, independent_sets=['race', 'hh_size', 'bdeg', 'hh_income', 'hh_own', 'rent_as_pct',
+                                   'insurance', 'gw_sw', 'timeline_characteristics', 'area', 'population'], dependent_variable='compliance_score')
 
     import tensorflow as tf
     tf.__version__
@@ -270,6 +386,10 @@ if __name__ == '__main__':
     independent_variables = filtered_data[0]
     X = filtered_data[1]
     y = filtered_data[2]
+
+    # print(independent_variables)
+    # print(len(independent_variables))
+    # raise ValueError
 
     # Splitting the dataset into the Training set and Test set
     from sklearn.model_selection import train_test_split
@@ -282,45 +402,58 @@ if __name__ == '__main__':
     X_train = sc.fit_transform(X_train)
     X_test = sc.transform(X_test)
 
+    # # This is just to test that the data was organized correctly
+    # # ['hh_size', 'bdeg', 'insurance', 'gw_sw', 'timeline_characteristics']
+    # # Should have r2 of 0.728174973621484 & adj_r2 of 0.719301468951892
+    # print(random_forest_regression(X, y))
+    # raise ValueError
+
     # Initializing the ANN
     ann = tf.keras.models.Sequential()
 
     # Adding the input layer and the first hidden layer
-    ann.add(tf.keras.layers.Dense(units=6, activation='relu'))
+    ann.add(tf.keras.layers.Dense(units=66, activation='relu'))
 
     # Adding the second hidden layer
-    ann.add(tf.keras.layers.Dense(units=6, activation='relu'))
+    ann.add(tf.keras.layers.Dense(units=66, activation='relu'))
 
     # Adding the output layer
-    ann.add(tf.keras.layers.Dense(units=1, activation='softmax'))
+    ann.add(tf.keras.layers.Dense(units=1))
 
     # Part 3 - Training the ANN
 
     # Compiling the ANN
-    ann.compile(optimizer='adam', loss='binary_crossentropy',
+    ann.compile(optimizer='adam', loss='mean_squared_error',
                 metrics=['accuracy'])
+    # ann.compile(optimizer='adam', loss='mean_squared_error')
 
     # Training the ANN on the Training set
     ann.fit(X_train, y_train, batch_size=1, epochs=100)
 
     # Predicting the Test set results
+
     y_pred = ann.predict(X_test)
-    y_pred = (y_pred > 0.5)
+    np.set_printoptions(precision=2)
     print(np.concatenate((y_pred.reshape(len(y_pred), 1),
           y_test.reshape(len(y_test), 1)), 1))
-
-    # # Making the Confusion Matrix
-    # from sklearn.metrics import confusion_matrix, accuracy_score
-    # cm = confusion_matrix(y_test, y_pred)
-    # print(cm)
-    # accuracy_score(y_test, y_pred)
-    # print(accuracy_score(y_test, y_pred))
+    print('keras.metrics.Accuracy function')
+    metric = tf.keras.metrics.Accuracy()
+    metric.update_state(y_test, y_pred)
+    print(metric.result().numpy())
+    print('MAPE:')
+    from sklearn.metrics import mean_absolute_percentage_error
+    MAPE = mean_absolute_percentage_error(y_test, ann.predict(X_test))
+    print(MAPE)
+    print('normal r2/adj_r2')
 
     r2 = r2_score(y_test, y_pred)
     adj_r2 = 1-(1-r2)*(len(y)-1)/(len(y)-1-X.shape[1])
 
     print(r2)
     print(adj_r2)
+
+    print('ann.evaluate function:')
+    print(ann.evaluate(x=X, y=y))
 
     finish = time.perf_counter()
     print(f'Seconds: {finish - start}')

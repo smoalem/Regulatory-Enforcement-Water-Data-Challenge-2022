@@ -25,8 +25,53 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVR
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import r2_score
+from sklearn.metrics import r2_score, confusion_matrix, accuracy_score
 import concurrent.futures
+from catboost import CatBoostRegressor
+from sklearn.model_selection import cross_val_score, GridSearchCV
+
+
+# 11.22 to do:
+# add k-fold and gridsearchcv to all and run to get better accuracy and hyperparameters.
+# research catboost and xgboost to understand how they each function. Maybe run both in this?
+# output all accuracies/sdevs and indicate most useful regression and the hyperparameters for it.
+# Run the whole thing.
+
+def catboost_regression(X, y):
+    # # # Cat Boost Regression:
+
+    # Splitting the dataset into the Training set and Test set
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=83)
+
+    # Training CatBoost on the Training set
+    regressor = CatBoostRegressor()
+    regressor.fit(X_train, y_train)
+
+    accuracies = cross_val_score(
+        estimator=regressor, X=X_train, y=y_train, cv=10)
+
+    # Predicting the Test set results
+    y_pred = regressor.predict(X_test)
+    # precision argument indicates number of digits of precision for floating point output (default 8)
+    np.set_printoptions(precision=2)
+    r2 = r2_score(y_test, y_pred)
+    adj_r2 = 1-(1-r2)*(len(y)-1)/(len(y)-1-X.shape[1])
+    print('catboost output')
+    print(r2)
+    print(adj_r2)
+
+    # # Making the Confusion Matrix
+    # y_pred = regressor.predict(X_test)
+    # cm = confusion_matrix(y_test, y_pred)
+    # print(cm)
+    # accuracy_score(y_test, y_pred)
+
+    # Applying k-Fold Cross Validation
+
+    print("Accuracy: {:.2f} %".format(accuracies.mean()*100))
+    print("Standard Deviation: {:.2f} %".format(accuracies.std()*100))
+    print('_____________________')
 
 
 def linear_regression(X, y):
@@ -44,12 +89,27 @@ def linear_regression(X, y):
     y_pred = regressor.predict(X_test)
     # precision argument indicates number of digits of precision for floating point output (default 8)
     np.set_printoptions(precision=2)
-    # print(np.concatenate((y_pred.reshape(len(y_pred),1), y_test.reshape(len(y_test),1)),1))
-    # Getting the final linear regression equation with the values of the coefficients
-    # print(regressor.coef_)
-    # print(regressor.intercept_)
     r2 = r2_score(y_test, y_pred)
     adj_r2 = 1-(1-r2)*(len(y)-1)/(len(y)-1-X.shape[1])
+
+    accuracies = cross_val_score(
+        estimator=regressor, X=X_train, y=y_train, cv=10)
+    # parameters = [{'C': [0.25, 0.5, 0.75, 1], 'kernel': ['linear']},
+    #               {'C': [0.25, 0.5, 0.75, 1], 'kernel': ['rbf'], 'gamma': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]}]
+    # grid_search = GridSearchCV(estimator=classifier,
+    #                            param_grid=parameters,
+    #                            scoring='accuracy',
+    #                            cv=10,
+    #                            n_jobs=-1)  # n_jobs = -1 means it will use all CPU cores
+    print('lin_reg output')
+    print(r2)
+    print(adj_r2)
+
+    # Applying k-Fold Cross Validation
+
+    print("Accuracy: {:.2f} %".format(accuracies.mean()*100))
+    print("Standard Deviation: {:.2f} %".format(accuracies.std()*100))
+    print('_____________________')
     return [r2, adj_r2]
 
 
@@ -71,6 +131,18 @@ def polynomial_regression(X, y):
     # print(np.concatenate((y_pred.reshape(len(y_pred),1), y_test.reshape(len(y_test),1)),1))
     r2 = r2_score(y_test, y_pred)
     adj_r2 = 1-(1-r2)*(len(y)-1)/(len(y)-1-X.shape[1])
+
+    accuracies = cross_val_score(
+        estimator=regressor, X=X_train, y=y_train, cv=10)
+    print('poly output')
+    print(r2)
+    print(adj_r2)
+
+    # Applying k-Fold Cross Validation
+
+    print("Accuracy: {:.2f} %".format(accuracies.mean()*100))
+    print("Standard Deviation: {:.2f} %".format(accuracies.std()*100))
+    print('_____________________')
     return [r2, adj_r2]
 
 
@@ -96,6 +168,39 @@ def support_vector_regression(X, y):
     # print(np.concatenate((y_pred.reshape(len(y_pred),1), y_test.reshape(len(y_test),1)),1))
     r2 = r2_score(y_test, y_pred)
     adj_r2 = 1-(1-r2)*(len(y)-1)/(len(y)-1-X.shape[1])
+
+    accuracies = cross_val_score(
+        estimator=regressor, X=X_train, y=y_train, cv=10)
+    # parameters = [{'kernel': ['linear'], 'C': [0.1, 1, 5, 10, 20, 50, 100]},
+    #               {'kernel': ['rbf, sigmoid'], 'gamma': [
+    #                   0.0001, 0.01, 0.1, 1, 5, 10], 'C': [0.1, 1, 5, 10, 20, 50, 100]},
+    #               {'kernel': ['poly'], 'gamma': [0.0001, 0.01, 0.1, 1, 5, 10], 'C': [0.1, 1, 5, 10, 20, 50, 100], 'degree': [2]}]
+    parameters = [{'kernel': ['poly'], 'gamma': [0.1], 'degree': [2, 3]}]
+
+    # linear alone was 165 seconds
+    # rbf alone was 15 seconds
+    # sigmoid alone was 13 seconds
+    # rbf, sigmoid was 28 seconds
+    # poly with gamma 1 took 294 seconds.
+    grid_search = GridSearchCV(estimator=regressor,
+                               param_grid=parameters,
+                               scoring='r2',
+                               cv=10,
+                               n_jobs=1)  # n_jobs = -1 means it will use all CPU cores
+    grid_search.fit(X_train, y_train)
+    print('svr output')
+    print(r2)
+    print(adj_r2)
+    print(grid_search.best_estimator_)
+    print(grid_search.best_score_)
+    print(grid_search.best_params_)
+    print(grid_search)
+
+    # Applying k-Fold Cross Validation
+
+    print("Accuracy: {:.2f} %".format(accuracies.mean()*100))
+    print("Standard Deviation: {:.2f} %".format(accuracies.std()*100))
+    print('_____________________')
     return [r2, adj_r2]
 
 
@@ -115,6 +220,18 @@ def decision_tree_regression(X, y):
     # print(np.concatenate((y_pred.reshape(len(y_pred),1), y_test.reshape(len(y_test),1)),1))
     r2 = r2_score(y_test, y_pred)
     adj_r2 = 1-(1-r2)*(len(y)-1)/(len(y)-1-X.shape[1])
+
+    accuracies = cross_val_score(
+        estimator=regressor, X=X_train, y=y_train, cv=10)
+    print('dec_tree output')
+    print(r2)
+    print(adj_r2)
+
+    # Applying k-Fold Cross Validation
+
+    print("Accuracy: {:.2f} %".format(accuracies.mean()*100))
+    print("Standard Deviation: {:.2f} %".format(accuracies.std()*100))
+    print('_____________________')
     return [r2, adj_r2]
 
 
@@ -132,6 +249,18 @@ def random_forest_regression(X, y):
     # print(np.concatenate((y_pred.reshape(len(y_pred),1), y_test.reshape(len(y_test),1)),1))
     r2 = r2_score(y_test, y_pred)
     adj_r2 = 1-(1-r2)*(len(y)-1)/(len(y)-1-X.shape[1])
+
+    accuracies = cross_val_score(
+        estimator=regressor, X=X_train, y=y_train, cv=10)
+    print('rand_forest output')
+    print(r2)
+    print(adj_r2)
+
+    # Applying k-Fold Cross Validation
+
+    print("Accuracy: {:.2f} %".format(accuracies.mean()*100))
+    print("Standard Deviation: {:.2f} %".format(accuracies.std()*100))
+    print('_____________________')
     return [r2, adj_r2]
 
 
@@ -194,17 +323,22 @@ def data_and_regression_selector(data, independent_sets, dependent_variable):
     # print(y_train)
     # raise ValueError
 
-    # start_regs = time.perf_counter()
+    start_regs = time.perf_counter()
     linear = linear_regression(X, y)
     # linear_fin = time.perf_counter()
     polynomial = polynomial_regression(X, y)
-    # poly_fin = time.perf_counter()
+    poly_fin = time.perf_counter()
     svr = support_vector_regression(X, y)
-    # svr_fin = time.perf_counter()
+    svr_fin = time.perf_counter()
+    print(svr_fin - poly_fin)
+    raise ValueError
     decision_tree = decision_tree_regression(X, y)
     # dt_fin = time.perf_counter()
     random_forest = random_forest_regression(X, y)
 
+    # cat_start = time.perf_counter()
+    # cat_boost = catboost_regression(X, y)
+    # print(time.perf_counter() - cat_start)
     # funcs_run = time.perf_counter()
 
     r2_output = [independent_variables, linear[0], polynomial[0],
@@ -388,10 +522,13 @@ if __name__ == '__main__':
     # print(type(dataset))
     # print(dataset.columns.to_list())
     # raise ValueError
-    # test = data_and_regression_selector(dataset, [
-    #                                     'hh_size', 'bdeg', 'insurance', 'timeline_characteristics', 'population'], 'compliance_score')
-    # print(test)
-    # raise ValueError
+
+    # # ['hh_size', 'bdeg', 'insurance', 'gw_sw', 'timeline_characteristics']
+    # # Should have r2 of 0.728174973621484 & adj_r2 of 0.719301468951892
+    test = data_and_regression_selector(dataset, [
+                                        'hh_size', 'bdeg', 'gw_sw', 'timeline_characteristics'], 'compliance_score')
+    print(test)
+    raise ValueError
 
     # print(var_combinations[-1])
     # print(list(var_combinations[-1]))

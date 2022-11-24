@@ -1,3 +1,4 @@
+import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -19,6 +20,8 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import r2_score
 import concurrent.futures
+from numba import jit
+import pandas as pd
 
 # build ANN by Friday
 
@@ -84,52 +87,67 @@ from sklearn.metrics import mean_absolute_percentage_error
 # Defining a function to find the best parameters for ANN
 
 
+@jit(forceobj=True, parallel=True)
 def FunctionFindBestParams(X_train, y_train, X_test, y_test):
 
     # Defining the list of hyper parameters to try
     batch_size_list = [1, 5, 10, 15, 20, 32]
-    epoch_list = [100, 1000, 2000, 10000]
+    epoch_list = [10, 20, 30, 40, 50, 100]
+    units_list = [ 6, 8, 12, 24, 48, 83, 125, 166 ]
+    hidden_layer_list = [1,2,3]
+    activation_function_dict = {"relu": "relu", "leaky relu": tf.keras.layers.LeakyReLU(alpha=0.01), "relu6": tf.nn.relu6 }
+    activation_function_name_list = ["relu", "leaky relu", "relu6"]
 
-    import pandas as pd
+
+    combination_list = [(b,e,u,h,a) for b in batch_size_list for e in epoch_list for u in units_list for h in hidden_layer_list for a in activation_function_name_list]
+    print(len(combination_list))
+
     SearchResultsData = pd.DataFrame(
-        columns=['TrialNumber', 'Parameters', 'Accuracy'])
+        columns=['trial_number', 'batch_size', 'epoch', 'hidden_layer', 'units', 'activation_function', 'accuracy', 'r2', 'adj_r2'])
 
     # initializing the trials
     TrialNumber = 0
-    for batch_size_trial in batch_size_list:
-        for epochs_trial in epoch_list:
-            TrialNumber += 1
-            # create ANN model
-            model = Sequential()
-            # Defining the first layer of the model
-            model.add(Dense(
-                units=6, input_dim=X_train.shape[1], kernel_initializer='normal', activation='relu'))
+    for combo in combination_list:
+        batch_size_trial = combo[0]
+        epochs_trial = combo[1]
+        units_trial = combo[2]
+        hidden_trial = combo[3]
+        activation_trial = combo[4]
+        TrialNumber += 1
+        # create ANN model
+        model = tf.keras.models.Sequential()
+        # Defining the first layer of the model
+        for _ in range(hidden_trial):
+            model.add(tf.keras.layers.Dense(
+                units=units_trial, activation= activation_function_dict[activation_trial]))
 
-            # Defining the Second layer of the model
-            model.add(
-                Dense(units=6, kernel_initializer='normal', activation='relu'))
+    
 
-            # The output neuron is a single fully connected node
-            # Since we will be predicting a single number
-            model.add(Dense(1, kernel_initializer='normal'))
+        # The output neuron is a single fully connected node
+        # Since we will be predicting a single number
+        model.add(tf.keras.layers.Dense(1))
 
-            # Compiling the model
-            model.compile(loss='mean_squared_error', optimizer='adam')
+        # Compiling the model
+        model.compile(loss='mean_squared_error', optimizer='adam')
 
-            # Fitting the ANN to the Training set
-            model.fit(X_train, y_train, batch_size=batch_size_trial,
-                      epochs=epochs_trial, verbose=0)
+        # Fitting the ANN to the Training set
+        model.fit(X_train, y_train, batch_size=batch_size_trial,
+                epochs=epochs_trial, verbose=0)
+        y_pred = model.predict(X_test)
+        MAPE = mean_absolute_percentage_error(y_test, model.predict(X_test))
+        MAPE_100 = 100 * MAPE
+        # MAPE = "N/A"
+        r2 = r2_score(y_test, y_pred)
+        adj_r2 = 1-(1-r2)*(len(y)-1)/(len(y)-1-X.shape[1])
+        
+        # printing the results of the current iteration
+        print(TrialNumber, 'Parameters:', 'batch_size:', batch_size_trial,
+            '-', 'epochs:', epochs_trial, 'hidden layers: ', hidden_trial, 'activation function: ', activation_trial, 'hidden layers: ', hidden_trial, 'Accuracy:', 100 - MAPE_100, "R2/Adj R2: ", str(r2) + ' / ' + str(adj_r2))
+        load = {'trial_number': [TrialNumber], 'batch_size':  [batch_size_trial], 'epoch': [epochs_trial], 'hidden layers': [hidden_trial], 'units': [units_trial], 'activation_function': [activation_trial],  'accuracy': [100-MAPE_100], "r2" : [r2],  'adj_r2' : [adj_r2]}
+        load_df = pd.DataFrame.from_dict(load)
+        SearchResultsData = pd.concat([SearchResultsData, load_df])
 
-            MAPE = 100 * \
-                mean_absolute_percentage_error(y_test, model.predict(X_test))
-
-            # printing the results of the current iteration
-            print(TrialNumber, 'Parameters:', 'batch_size:', batch_size_trial,
-                  '-', 'epochs:', epochs_trial, 'Accuracy:', 100-MAPE)
-
-            SearchResultsData = SearchResultsData.append(pd.DataFrame(data=[[TrialNumber, str(batch_size_trial)+'-'+str(epochs_trial), 100-MAPE]],
-                                                                      columns=['TrialNumber', 'Parameters', 'Accuracy']))
-    return(SearchResultsData)
+    return SearchResultsData 
 
 
 def random_forest_regression(X, y):
@@ -302,49 +320,65 @@ if __name__ == '__main__':
         identity = [None]*3
         compliance = [None]*2
         overage = [None]*2
-
+        #7
         if j['n_race'] > 0:
             race_fractions = [j['n_white_alone']/j['n_race'], j['n_black_alone']/j['n_race'], j['n_ai_and_an_alone']/j['n_race'], j['n_asian_alone'] /
                               j['n_race'], j['n_nh_and_opi_alone']/j['n_race'], j['n_other_alone']/j['n_race'], j['n_two_or_more_races']/j['n_race']]
+        #5
         if j['hh_size'] > 0:
             hh_size_fractions = [j['hh_1worker']/j['hh_size'], j['hh_2worker']/j['hh_size'],
                                  j['hh_3+worker']/j['hh_size'], j['n_hh_3ppl']/j['hh_size'], j['n_hh_4+ppl']/j['hh_size']]
+        # 9
         if j['n_hh_type'] > 0:
             hh_type_fractions = [j['n_hh_type_fam']/j['n_hh_type'], j['n_hh_type_fam_mcf']/j['n_hh_type'], j['n_hh_type_fam_mcf_1unit']/j['n_hh_type'], j['n_hh_type_fam_mcf_2unit']/j['n_hh_type'], j['n_hh_type_fam_mcf_mh_and_other']/j['n_hh_type'], j['n_hh_type_fam_other']/j['n_hh_type'], j['n_hh_type_fam_other_mhh_nsp']/j['n_hh_type'], j['n_hh_type_fam_other_mhh_nsp_1unit']/j['n_hh_type'], j['n_hh_type_fam_other_mhh_nsp_2unit']/j['n_hh_type'],
                                  j['n_hh_type_fam_other_mhh_nsp_mh_and_other']/j['n_hh_type'], j['n_hh_type_fam_other_fhh_nsp']/j['n_hh_type'], j['n_hh_type_fam_other_fhh_nsp_1unit']/j['n_hh_type'], j['n_hh_type_fam_other_fhh_nsp_2unit']/j['n_hh_type'], j['n_hh_type_fam_other_fhh_nsp_mh_and_other']/j['n_hh_type'], j['n_hh_type_nonfam']/j['n_hh_type'], j['n_hh_type_nonfam_1unit']/j['n_hh_type'], j['n_hh_type_nonfam_2unit']/j['n_hh_type'], j['n_hh_type_nonfam_mh_and_other']/j['n_hh_type']]
+        # 15
         if j['n_bachelors_deg'] > 0:
             bdeg_fractions = [j['n_seng_compt_mat_stat_deg']/j['n_bachelors_deg'], j['n_seng_bio_ag_env_deg']/j['n_bachelors_deg'], j['n_seng_phys_sci_deg']/j['n_bachelors_deg'], j['n_seng_psych_deg']/j['n_bachelors_deg'], j['n_seng_soc_sci_deg']/j['n_bachelors_deg'], j['n_seng_eng_deg']/j['n_bachelors_deg'], j['n_seng_mds_deg']/j['n_bachelors_deg'],
                               j['n_seng_rltd_deg']/j['n_bachelors_deg'], j['n_bus_deg']/j['n_bachelors_deg'], j['n_edu_deg']/j['n_bachelors_deg'], j['n_aho_lit_lang_deg']/j['n_bachelors_deg'], j['n_aho_lib_arts_and_hist_deg']/j['n_bachelors_deg'], j['n_aho_vis_perf_art_deg']/j['n_bachelors_deg'], j['n_aho_comm_deg']/j['n_bachelors_deg'], j['n_aho_other_deg']/j['n_bachelors_deg']]
             bdeg_answer_rate = j['n_bachelors_deg']/max_answers
             # Necessary b/c this was the only census question with no negative answer
             bdeg_fractions = [bdeg*bdeg_answer_rate for bdeg in bdeg_fractions]
+        #16
         if j['n_hh_income'] > 0:
             hh_income_fractions = [j['n_hh_income_lt_10k']/j['n_hh_income'], j['n_hh_income_10k_15k']/j['n_hh_income'], j['n_hh_income_15k_20k']/j['n_hh_income'], j['n_hh_income_20k_25k']/j['n_hh_income'], j['n_hh_income_25k_30k']/j['n_hh_income'], j['n_hh_income_30k_35k']/j['n_hh_income'], j['n_hh_income_35k_40k']/j['n_hh_income'], j['n_hh_income_40k_45k']/j['n_hh_income'],
                                    j['n_hh_income_45k_50k']/j['n_hh_income'], j['n_hh_income_50k_60k']/j['n_hh_income'], j['n_hh_income_60k_75k']/j['n_hh_income'], j['n_hh_income_75k_100k']/j['n_hh_income'], j['n_hh_income_100k_125k']/j['n_hh_income'], j['n_hh_income_125k_150k']/j['n_hh_income'], j['n_hh_income_150k_200k']/j['n_hh_income'], j['n_hh_income_gt_200k']/j['n_hh_income']]
+        #2
         if j['n_hh_housing_units'] > 0:
             hh_ownership_fractions = [
                 j['n_hh_own']/j['n_hh_housing_units'], j['n_hh_rent']/j['n_hh_housing_units']]
+        #10
         if j['n_rent_as_pct'] > 0:
             rent_as_pct_fractions = [j['n_rent_lt_10pct']/j['n_rent_as_pct'], j['n_rent_10_14.9pct']/j['n_rent_as_pct'], j['n_rent_15_19.9pct']/j['n_rent_as_pct'], j['n_rent_20_24.9pct']/j['n_rent_as_pct'], j['n_rent_25_29.9pct'] /
                                      j['n_rent_as_pct'], j['n_rent_30_34.9pct']/j['n_rent_as_pct'], j['n_rent_35_39.9pct']/j['n_rent_as_pct'], j['n_rent_40_49.9pct']/j['n_rent_as_pct'], j['n_rent_gt_50pct']/j['n_rent_as_pct'], j['n_rent_not_computed']/j['n_rent_as_pct']]
             rent_rate = j['n_rent_as_pct'] * \
                 (j['n_hh_rent']/j['n_hh_housing_units'])
             # Necessary b/c own vs rent ratio can vary
+            # 1
             rent_as_pct_fractions = [
                 rpct*rent_rate for rpct in rent_as_pct_fractions]
+        #2
         if j['n_insurance'] > 0:
             insurance_fractions = [
                 j['n_have_insurance']/j['n_insurance'], j['n_no_insurance']/j['n_insurance']]
+        #2
         gw_sw = [j['number_gw'], j['number_sw']]
+        #4
         timeline_characteristics = [j['ave_target_timeline'], j['ave_method_priority_level'],
                                     j['ave_num_time_segments'], j['ave_num_track_switches']]
+        #1
         regulator = [j['regulating']]
+        #2
         area = [j['arealand'], j['areawater']]
+        #1
         population = [j['population']]
+        #3
         identity = [j['ws_id'], j['water_system_number'],
                     j['water_system_name']]
+        #2
         compliance = [float(j['ave_red_lean_score']), float(
             j['ave_score_red_lean_percentile'])]
+        #2
         if j['overage_percentile'] != 'NA':
             overage = [float(j['ave_overage_rate']),
                        float(j['overage_percentile'])]
@@ -378,10 +412,9 @@ if __name__ == '__main__':
     # if you want all variables EXCEPT for regulating ['race', 'hh_size', 'bdeg', 'hh_income', 'hh_own', 'rent_as_pct', 'insurance', 'gw_sw', 'timeline_characteristics', 'area', 'population']
     filtered_data = dataset_filter(dataset, independent_sets=['race', 'hh_size', 'bdeg', 'hh_income', 'hh_own', 'rent_as_pct',
                                    'insurance', 'gw_sw', 'timeline_characteristics', 'area', 'population'], dependent_variable='compliance_score')
+    # filtered_data = dataset_filter(dataset, independent_sets=['hh_size', 'bdeg', 'insurance', 'gw_sw', 'timeline_characteristics'], dependent_variable='compliance_score')
 
-    import tensorflow as tf
-    tf.__version__
-    print(tf.__version__)
+
 
     independent_variables = filtered_data[0]
     X = filtered_data[1]
@@ -392,74 +425,84 @@ if __name__ == '__main__':
     # raise ValueError
 
     # Splitting the dataset into the Training set and Test set
-    from sklearn.model_selection import train_test_split
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=83)
+    r2_list = []
+    for i in range(100):
+        print(f"Loop {i}")
+        from sklearn.model_selection import train_test_split
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=83)
 
-    # Feature Scaling
-    from sklearn.preprocessing import StandardScaler
-    sc = StandardScaler()
-    X_train = sc.fit_transform(X_train)
-    X_test = sc.transform(X_test)
+        # Feature Scaling
+        from sklearn.preprocessing import StandardScaler
+        sc = StandardScaler()
+        X_train = sc.fit_transform(X_train)
+        X_test = sc.transform(X_test)
 
-    # # This is just to test that the data was organized correctly
-    # # ['hh_size', 'bdeg', 'insurance', 'gw_sw', 'timeline_characteristics']
-    # # Should have r2 of 0.728174973621484 & adj_r2 of 0.719301468951892
-    # print(random_forest_regression(X, y))
-    # raise ValueError
+        # # This is just to test that the data was organized correctly
+        # # ['hh_size', 'bdeg', 'insurance', 'gw_sw', 'timeline_characteristics']
+        # # Should have r2 of 0.728174973621484 & adj_r2 of 0.719301468951892
+        # print(random_forest_regression(X, y))
+        # raise ValueError
 
-    # Initializing the ANN
-    ann = tf.keras.models.Sequential()
+        # Initializing the ANN
+        # table_best_params = FunctionFindBestParams(X_train, y_train, X_test, y_test)
+        # table_best_params.to_csv("best_params_search.csv")
+        ann = tf.keras.models.Sequential()
+        ann.add(tf.keras.layers.Dense(units= 166, activation=tf.nn.relu6))
+        ann.add(tf.keras.layers.Dense(units= 166, activation=tf.nn.relu6))
 
-    # Adding the input layer and the first hidden layer
-    ann.add(tf.keras.layers.Dense(units=66, activation='relu'))
+    
+        # # Adding the output layer
+        ann.add(tf.keras.layers.Dense(units=1))
 
-    # Adding the second hidden layer
-    ann.add(tf.keras.layers.Dense(units=66, activation='relu'))
+        # # Part 3 - Training the ANN
 
-    # Adding the output layer
-    ann.add(tf.keras.layers.Dense(units=1))
+        # # Compiling the ANN
+        ann.compile(optimizer='adam', loss='mean_squared_error')
+        # ann.compile(optimizer='adam', loss='mean_squared_error')
 
-    # Part 3 - Training the ANN
+        # # Training the ANN on the Training set
+        ann.fit(X_train, y_train, batch_size=1, epochs=100, verbose=0)
 
-    # Compiling the ANN
-    ann.compile(optimizer='adam', loss='mean_squared_error',
-                metrics=['accuracy'])
-    # ann.compile(optimizer='adam', loss='mean_squared_error')
 
-    # Training the ANN on the Training set
-    ann.fit(X_train, y_train, batch_size=1, epochs=100)
+    # 128 hidden layer x 3 
+    # 3000 epochs
+    # loss: 43.3718
+    # normal r2/adj_r2
+    # 0.5555102403221246
+    # 0.5212022906534577
 
-    # Predicting the Test set results
+    # 123 Parameters: batch_size: 1 - epochs: 20 hidden layers:  2 activation function:  relu6 Accuracy: 76.47456847560395 R2/Adj R2:  0.6075984947424813 / 0.5773109778781098
 
-    y_pred = ann.predict(X_test)
-    np.set_printoptions(precision=2)
-    print(np.concatenate((y_pred.reshape(len(y_pred), 1),
-          y_test.reshape(len(y_test), 1)), 1))
-    print('keras.metrics.Accuracy function')
-    metric = tf.keras.metrics.Accuracy()
-    metric.update_state(y_test, y_pred)
-    print(metric.result().numpy())
-    print('MAPE:')
-    from sklearn.metrics import mean_absolute_percentage_error
-    MAPE = mean_absolute_percentage_error(y_test, ann.predict(X_test))
-    print(MAPE)
-    print('normal r2/adj_r2')
+        # Predicting the Test set results
+        y_pred = ann.predict(X_test)
+        # np.set_printoptions(precision=2)
+        # print(np.concatenate((y_pred.reshape(len(y_pred), 1),
+        #       y_test.reshape(len(y_test), 1)), 1))
+        # print('keras.metrics.Accuracy function')
+        # metric = tf.keras.metrics.Accuracy()
+        # metric.update_state(y_test, y_pred)
+        # print(metric.result().numpy())
+        # print('MAPE:')
+        from sklearn.metrics import mean_absolute_percentage_error
+        # MAPE = mean_absolute_percentage_error(y_test, ann.predict(X_test))
+        # print(MAPE)
+        print('normal r2/adj_r2')
 
-    r2 = r2_score(y_test, y_pred)
-    adj_r2 = 1-(1-r2)*(len(y)-1)/(len(y)-1-X.shape[1])
+        r2 = r2_score(y_test, y_pred)
+        adj_r2 = 1-(1-r2)*(len(y)-1)/(len(y)-1-X.shape[1])
+        r2_list.append((r2, adj_r2))
 
-    print(r2)
-    print(adj_r2)
+    print(r2_list)
 
     print('ann.evaluate function:')
-    print(ann.evaluate(x=X, y=y))
+    print(ann.evaluate(np.asarray(X_test).astype('float32'), np.asarray(y_test).astype('float32')))
 
     finish = time.perf_counter()
     print(f'Seconds: {finish - start}')
-    pr.disable()
-    s = io.StringIO()
-    sortby = SortKey.CUMULATIVE
-    ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-    ps.print_stats()
-    print(s.getvalue())
+    # pr.disable()
+    # s = io.StringIO()
+    # sortby = SortKey.CUMULATIVE
+    # ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+    # ps.print_stats()
+    # print(s.getvalue())

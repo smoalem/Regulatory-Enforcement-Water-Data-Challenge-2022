@@ -105,7 +105,7 @@ def polynomial_regression(X, y):
 
     # Gridsearch Cross-Validation
     regressor = LinearRegression()
-    degrees = [2]
+    degrees = [2, 3]
     output_data = []
     for deg in degrees:
         poly_features = PolynomialFeatures(degree=deg)
@@ -127,7 +127,6 @@ def polynomial_regression(X, y):
         test_gridsearch['regression'] = 'poly'
         output_data.append(test_gridsearch)
     df_gridsearch = pd.concat(output_data)
-
     return df_gridsearch
 
 
@@ -147,10 +146,10 @@ def support_vector_regression(X, y):
 
     # Gridsearch Cross-Validation
     regressor = SVR()
-    parameters = [{'kernel': ['linear'], 'C': [0.1, 1, 5]},
+    parameters = [{'kernel': ['linear'], 'C': [0.1, 1, 5, 10]},
                   {'kernel': ['rbf', 'sigmoid'], 'gamma': [
-                      0.0001, 0.01, 0.1, 1, 5, 10], 'C': [0.1, 1, 5]},
-                  {'kernel': ['poly'], 'gamma': [0.0001, 0.001, 0.01],  'C': [0.1, 1, 5], 'degree': [2, 3]}]
+                      0.0001, 0.01, 0.1, 1, 5, 10], 'C': [0.1, 1, 5, 10]},
+                  {'kernel': ['poly'], 'gamma': [0.0001, 0.01, 0.1],  'C': [0.1, 1, 5, 10], 'degree': [2, 3]}]
 
     # {'kernel': ['linear'], 'C': [0.1, 1, 5, 10]} took 17 seconds
     # # # Keep C at 10 or less since it can take a long time
@@ -270,46 +269,42 @@ def data_and_regression_selector(data, independent_sets, dependent_variable):
 
     independent_variables = ', '.join(independent_sets)
 
-    times = []
+    # X_train, X_test, y_train, y_test = train_test_split(
+    #     X, y, test_size=0.2, random_state=0)
+
+    # print(X_train)
+    # print(y_train)
+    # raise ValueError
+    # times = []
     df_gridsearch_results = []
-    start_regs = time.perf_counter()
+    # start_regs = time.perf_counter()
     df_gridsearch_results.append(linear_regression(X, y))
-
-    linear_fin = time.perf_counter()
-    times.append(linear_fin - start_regs)
-    print(f'lin_reg took: {times[-1]}')
-
-    if df_gridsearch_results[0]['mean_test_score'].max() >= 0.5:
-        df_gridsearch_results.append(polynomial_regression(X, y))
-
-        poly_fin = time.perf_counter()
-        times.append(poly_fin - linear_fin)
-        print(f'poly_reg took: {times[-1]}')
-
-        df_gridsearch_results.append(support_vector_regression(X, y))
-
-        svr_fin = time.perf_counter()
-        times.append(svr_fin - poly_fin)
-        print(f'svr_reg took: {times[-1]}')
-
-        df_gridsearch_results.append(decision_tree_regression(X, y))
-
-        dt_fin = time.perf_counter()
-        times.append(dt_fin - svr_fin)
-        print(f'dt_reg took: {times[-1]}')
-
-        df_gridsearch_results.append(random_forest_regression(X, y))
-
-        rf_fin = time.perf_counter()
-        times.append(rf_fin - dt_fin)
-
+    # linear_fin = time.perf_counter()
+    # print(linear_fin)
+    # times.append(linear_fin - start_regs)
+    df_gridsearch_results.append(polynomial_regression(X, y))
+    # poly_fin = time.perf_counter()
+    # times.append(poly_fin - linear_fin)
+    # print(poly_fin)
+    df_gridsearch_results.append(support_vector_regression(X, y))
+    # svr_fin = time.perf_counter()
+    # times.append(svr_fin - poly_fin)
+    # print(svr_fin)
+    df_gridsearch_results.append(decision_tree_regression(X, y))
+    # dt_fin = time.perf_counter()
+    # times.append(dt_fin - svr_fin)
+    # print(dt_fin)
+    df_gridsearch_results.append(random_forest_regression(X, y))
+    # rf_fin = time.perf_counter()
+    # times.append(rf_fin - dt_fin)
+    # print(times)
     df_all_gridsearch = pd.concat(df_gridsearch_results)
     df_all_gridsearch['independent_variables'] = independent_variables
     df_all_gridsearch = df_all_gridsearch[['independent_variables', 'params', 'mean_test_score', 'std_test_score', 'rank_test_score', 'regression',
                                            'mean_fit_time', 'std_fit_time', 'mean_score_time', 'std_score_time',
                                            'split0_test_score', 'split1_test_score', 'split2_test_score', 'split3_test_score', 'split4_test_score', 'split5_test_score', 'split6_test_score', 'split7_test_score', 'split8_test_score', 'split9_test_score']]
     # print(df_all_gridsearch)
-    print(f'{independent_sets}: {str(times)}')
+    print(independent_sets)
     return df_all_gridsearch.values.tolist()
 
 
@@ -336,11 +331,23 @@ if __name__ == '__main__':
         df_ws_compliance_and_overage, df_wsp, left_on='ws_id', right_on='id', how='left')
     df_wsp_score_census = pd.merge(
         df_census, df_wsp_and_scores, left_on='sabl_pwsid', right_on='water_system_number', how='left')
+    # print(len(df_wsp_score_census))
+    # print(df_wsp_score_census['ave_overage_rate'])
+    # print(df_wsp_score_census['ave_overage_rate'].max())
+    # print(df_wsp_score_census['ave_overage_rate'].min())
     df_wsp_score_census = df_wsp_score_census[(df_wsp_score_census['ave_red_lean_score'] != 'PMD') & (
         df_wsp_score_census['ave_red_lean_score'] != 'TBD') & (df_wsp_score_census['ave_red_lean_score'] != 'NA')]
-
+    # print(len(df_wsp_score_census))
+    # print(df_wsp_score_census['ave_overage_rate'])
+    # print(df_wsp_score_census['ave_overage_rate'].max())
+    # print(df_wsp_score_census['ave_overage_rate'].min())
     df_wsp_score_census = df_wsp_score_census[(df_wsp_score_census['ave_overage_rate'] != 'PMD') & (
         df_wsp_score_census['ave_overage_rate'] != 'TBD') & (df_wsp_score_census['ave_overage_rate'] != 'NA')]
+    # print(len(df_wsp_score_census))
+    # print(df_wsp_score_census['ave_overage_rate'])
+    # print(df_wsp_score_census['ave_overage_rate'].max())
+    # print(df_wsp_score_census['ave_overage_rate'].min())
+    # raise ValueError
 
     df_wsp_score_census.drop(['n_100pct_pov_lvl', 'n_101_149pct_pov_lvl', 'n_150pct_pov_lvl', 'id',
                              'pserved', 'type', 'primary_source_water_type', 'ur', 'water_sy_1', 'pop100'], axis=1, inplace=True)
@@ -489,10 +496,18 @@ if __name__ == '__main__':
     for i in var_comb_sublists:
         print(len(i))
 
-    # ['hh_size', 'bdeg', 'insurance', 'gw_sw', 'timeline_characteristics']
-    # Should have r2 of 0.728174973621484 & adj_r2 of 0.719301468951892
+    # # # ['hh_size', 'bdeg', 'insurance', 'gw_sw', 'timeline_characteristics']
+    # # # Should have r2 of 0.728174973621484 & adj_r2 of 0.719301468951892
+    # print(var_combinations[0])
+    # raise ValueError
     # test = data_and_regression_selector(
-    #     dataset, ('race', 'hh_size', 'bdeg', 'hh_income', 'hh_own', 'timeline_characteristics', 'area', 'population'), 'compliance_percentile')
+    #     dataset, var_combinations[298], 'compliance_score')
+    # # test = data_and_regression_selector(
+    # #     dataset, ['population'], 'compliance_score')  # [0.02569700000000008, 0.06311999999999962, 12.738834400000002, 0.1435274999999976, 10.937740300000002] 24 sec
+    # # test = data_and_regression_selector(dataset, [
+    # #                                     'hh_size', 'bdeg', 'gw_sw', 'timeline_characteristics'], 'compliance_score') # [0.06445889999999999, 12.181395799999999, 57.5163129, 1.2212285999999892, 47.598564100000004] 120 sec
+    # # test = data_and_regression_selector(dataset, ['race', 'hh_size', 'bdeg', 'hh_income', 'hh_own', 'rent_as_pct',
+    # #                  'insurance', 'gw_sw', 'timeline_characteristics', 'area', 'population'], 'compliance_score') # [0.2069844000000005, 85.5760118, 97.3186212, 2.973320099999995, 107.89907750000003] 293 sec
     # print(test)
     # raise ValueError
 
@@ -505,54 +520,34 @@ if __name__ == '__main__':
 
     # dependent_vars_to_test = [
     #     'overage_rate', 'overage_percentile', 'compliance_score', 'compliance_percentile']
-    dependent_vars_to_test = [
-        'compliance_score', 'compliance_percentile', 'overage_rate', 'overage_percentile']
+    dependent_vars_to_test = ['compliance_score', 'compliance_percentile']
     for dependent in dependent_vars_to_test:
-        sublist_times = []
-        dependent_index = dependent_vars_to_test.index(dependent)
         for sublist in var_comb_sublists:
-
-            sublist_index = var_comb_sublists.index(sublist)
-            print(sublist_index)
-
-            # regression_columns = ['independent_variables', 'params', 'mean_test_score', 'std_test_score', 'rank_test_score', 'regression',
-            #                       'mean_fit_time', 'std_fit_time', 'mean_score_time', 'std_score_time',
-            #                       'split0_test_score', 'split1_test_score', 'split2_test_score', 'split3_test_score', 'split4_test_score', 'split5_test_score', 'split6_test_score', 'split7_test_score', 'split8_test_score', 'split9_test_score']
-            # regression_outputs = []
-            # regression_start = time.perf_counter()
-            # with concurrent.futures.ProcessPoolExecutor() as executor:  # This is to use multiprocessing
-            #     results = executor.map(data_and_regression_selector, [
-            #         dataset]*len(sublist), sublist, [dependent]*len(sublist))
-            #     end_results_creation = time.perf_counter()
-            #     print(
-            #         f'Results creation: {end_results_creation-regression_start}')
-            #     for result in results:
-            #         regression_outputs.extend(result)
-            #         # print(
-            #         #     f'Time: {str(time.perf_counter() - end_results_creation)}, Len of result: {str(len(result))}, Len of output:{str(len(regression_outputs))}')
-            #     print(
-            #         f'Results iteration: {time.perf_counter()-end_results_creation}')
+            print(var_comb_sublists.index(sublist))
 
             regression_columns = ['independent_variables', 'params', 'mean_test_score', 'std_test_score', 'rank_test_score', 'regression',
                                   'mean_fit_time', 'std_fit_time', 'mean_score_time', 'std_score_time',
                                   'split0_test_score', 'split1_test_score', 'split2_test_score', 'split3_test_score', 'split4_test_score', 'split5_test_score', 'split6_test_score', 'split7_test_score', 'split8_test_score', 'split9_test_score']
             regression_outputs = []
-            sublist_start = time.perf_counter()
-            for var_combo in sublist:
-                print(f'Trying: {var_combo}')
-                regression_outputs.extend(
-                    data_and_regression_selector(dataset, var_combo, dependent))
-            sublist_times.append(time.perf_counter() - sublist_start)
-            print(
-                f'\n\n\nSublist {sublist_index} finished in (seconds): {time.perf_counter() - sublist_start}')
-            print(
-                f'All sublist times for this dep variable (seconds): {sublist_times}\n\n')
+            regression_start = time.perf_counter()
+            with concurrent.futures.ProcessPoolExecutor() as executor:  # This is to use multiprocessing
+                results = executor.map(data_and_regression_selector, [
+                    dataset]*len(sublist), sublist, [dependent]*len(sublist))
+                end_results_creation = time.perf_counter()
+                print(
+                    f'Results creation: {end_results_creation-regression_start}')
+                for result in results:
+                    regression_outputs.extend(result)
+                    # print(
+                    #     f'Time: {str(time.perf_counter() - end_results_creation)}, Len of result: {str(len(result))}, Len of output:{str(len(regression_outputs))}')
+                print(
+                    f'Results iteration: {time.perf_counter()-end_results_creation}')
 
             df_reg = pd.DataFrame(regression_outputs,
                                   columns=regression_columns)
             df_reg['dependent_variable'] = dependent
-            append_or_replace = (
-                'replace')*(sublist_index + dependent_index == 0) + ('append')*(sublist_index + dependent_index > 0)
+            append_or_replace = ('replace')*(var_comb_sublists.index(sublist)
+                                             == 0) + ('append')*(var_comb_sublists.index(sublist) > 0)
 
             conn = wdc.sql_query_conn()
             df_reg.to_sql('ml_gridsearch_regressions', conn,
@@ -562,7 +557,7 @@ if __name__ == '__main__':
     wdc.create_index('ml_gridsearch_regressions', independent_variables='ASC')
     wdc.create_index('ml_gridsearch_regressions', params='ASC')
     wdc.create_index('ml_gridsearch_regressions', mean_test_score='ASC')
-    wdc.create_index('ml_gridsearch_regressions', regression='ASC')
+    wdc.create_index('ml_gridsearch_regressions', params='ASC')
 
     finish = time.perf_counter()
     print(f'Seconds: {finish - start}')

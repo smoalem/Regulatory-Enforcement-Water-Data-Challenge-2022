@@ -7,6 +7,7 @@ Created on Mon Sep 26 17:12:19 2022
 
 # Importing the libraries
 import numpy as np
+import matplotlib.pyplot as plt
 import pandas as pd
 import wdc_lib as wdc
 import time
@@ -14,165 +15,27 @@ import cProfile
 import pstats
 import io
 from pstats import SortKey
-import concurrent.futures
+from sklearn.model_selection import train_test_split
 from sklearn.impute import SimpleImputer
 from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import OneHotEncoder, PolynomialFeatures, StandardScaler
+from sklearn.preprocessing import OneHotEncoder
 from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVR
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import r2_score, confusion_matrix, accuracy_score
+import concurrent.futures
 from catboost import CatBoostRegressor
-from xgboost import XGBRegressor
-from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
+from sklearn.model_selection import cross_val_score, GridSearchCV
 
 
-def linear_regression(X, y):
-    # # # Multiple Linear Regression:
-
-    # Splitting the dataset into the Training set and Test set
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=83)
-
-    # Gridsearch Cross-Validation
-    regressor = LinearRegression()
-    parameters = [{'fit_intercept': [True, False]}]
-    grid_search = GridSearchCV(estimator=regressor,
-                               param_grid=parameters,
-                               scoring='r2',
-                               cv=10,
-                               n_jobs=-1)  # n_jobs = -1 means it will use all CPU cores
-    grid_search.fit(X_train, y_train)
-    df_gridsearch = pd.DataFrame(grid_search.cv_results_)
-    df_gridsearch['params'] = df_gridsearch['params'].astype("str")
-    df_gridsearch['regression'] = 'linear'
-    return df_gridsearch
-
-
-def polynomial_regression(X, y):
-    # # # Polynomial Regression:
-
-    # Splitting the dataset into the Training set and Test set
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=83)
-
-    # Gridsearch Cross-Validation
-    regressor = LinearRegression()
-    degrees = [2]
-    output_data = []
-    for deg in degrees:
-        poly_features = PolynomialFeatures(degree=deg)
-        X_train_poly = poly_features.fit_transform(X_train)
-        regressor = LinearRegression()
-        # parameters = [{'fit_intercept': [True], 'normalize':[
-        #     True, False]}, {'fit_intercept': [False]}]
-        parameters = [{'fit_intercept': [True, False]}]
-        grid_search = GridSearchCV(estimator=regressor,
-                                   param_grid=parameters,
-                                   scoring='r2',
-                                   cv=10,
-                                   n_jobs=-1)  # n_jobs = -1 means it will use all CPU cores
-        grid_search.fit(X_train_poly, y_train)
-        test_gridsearch = pd.DataFrame(grid_search.cv_results_)
-        test_gridsearch['params'] = test_gridsearch['params'].astype("str")
-        test_gridsearch['params'] = test_gridsearch['params'] + \
-            ' + degree=' + str(deg)
-        test_gridsearch['regression'] = 'poly'
-        output_data.append(test_gridsearch)
-    df_gridsearch = pd.concat(output_data)
-
-    return df_gridsearch
-
-
-def support_vector_regression(X, y):
-    # # # SVR:
-    y = y.reshape(len(y), 1)
-
-    # Splitting the dataset into the Training set and Test set
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=83)
-
-    # Feature Scaling
-    sc_X = StandardScaler()
-    sc_y = StandardScaler()
-    X_train = sc_X.fit_transform(X_train)
-    y_train = sc_y.fit_transform(y_train)
-
-    # Gridsearch Cross-Validation
-    regressor = SVR()
-    parameters = [{'kernel': ['linear'], 'C': [0.1, 1, 5]},
-                  {'kernel': ['rbf', 'sigmoid'], 'gamma': [
-                      0.0001, 0.01, 0.1, 1, 5, 10], 'C': [0.1, 1, 5]},
-                  {'kernel': ['poly'], 'gamma': [0.0001, 0.001, 0.01],  'C': [0.1, 1, 5], 'degree': [2, 3]}]
-
-    # {'kernel': ['linear'], 'C': [0.1, 1, 5, 10]} took 17 seconds
-    # # # Keep C at 10 or less since it can take a long time
-    # rbf alone was 15 seconds
-    # sigmoid alone was 13 seconds
-    # rbf, sigmoid was 28 seconds
-    # {'kernel': ['rbf', 'sigmoid'],'gamma': [0.0001, 0.01, 0.1, 1, 5, 10], 'C': [0.1, 1, 5, 10]} took 14 seconds
-    # # # Keep C at 10 or less since it can take a long time
-    # poly with gamma 1 took 294 seconds.
-    # {'kernel': ['poly'], 'gamma': [0.5], 'degree': [2, 3]} took 54 seconds.
-    # parameters = {'kernel': ['poly'], 'gamma': [0.0001, 0.01, 0.1],  'C': [0.1, 1, 5, 10], 'degree': [2, 3]} took 26 seconds
-    grid_search = GridSearchCV(estimator=regressor,
-                               param_grid=parameters,
-                               scoring='r2',
-                               cv=10,
-                               n_jobs=-1)  # n_jobs = -1 means it will use all CPU cores
-    grid_search.fit(X_train, y_train.ravel())
-    df_gridsearch = pd.DataFrame(grid_search.cv_results_)
-    df_gridsearch['params'] = df_gridsearch['params'].astype("str")
-    df_gridsearch['regression'] = 'svr'
-    return df_gridsearch
-
-
-def decision_tree_regression(X, y):
-    # # # Decision Tree:
-
-    # Splitting the dataset into the Training set and Test set
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=83)
-
-    # Gridsearch Cross-Validation
-    regressor = DecisionTreeRegressor(random_state=83)
-    parameters = [{'criterion': ['squared_error',
-                                 'friedman_mse', 'absolute_error', 'poisson'], 'max_depth': [3, 5, 10, None]}]
-    grid_search = GridSearchCV(estimator=regressor,
-                               param_grid=parameters,
-                               scoring='r2',
-                               cv=10,
-                               n_jobs=-1)  # n_jobs = -1 means it will use all CPU cores
-    grid_search.fit(X_train, y_train)
-    df_gridsearch = pd.DataFrame(grid_search.cv_results_)
-    df_gridsearch['params'] = df_gridsearch['params'].astype("str")
-    df_gridsearch['regression'] = 'decision_tree'
-    return df_gridsearch
-
-
-def random_forest_regression(X, y):
-    # # # Random Forest:
-    # Splitting the dataset into the Training set and Test set
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=83)
-
-    # Gridsearch Cross-Validation
-    regressor = RandomForestRegressor()
-    # parameters = [{'n_estimators': [10, 100, 200], 'criterion': [
-    #     'squared_error', 'poisson']}]
-    parameters = [{'n_estimators': [10, 100, 200], 'criterion': [
-        'squared_error', 'poisson'], 'max_depth': [3, 5, None]}]
-    grid_search = GridSearchCV(estimator=regressor,
-                               param_grid=parameters,
-                               scoring='r2',
-                               cv=10,
-                               n_jobs=-1)  # n_jobs = -1 means it will use all CPU cores
-    grid_search.fit(X_train, y_train)
-    df_gridsearch = pd.DataFrame(grid_search.cv_results_)
-    df_gridsearch['params'] = df_gridsearch['params'].astype("str")
-    df_gridsearch['regression'] = 'random_forest'
-    return df_gridsearch
-
+# 11.22 to do:
+# add k-fold and gridsearchcv to all and run to get better accuracy and hyperparameters.
+# research catboost and xgboost to understand how they each function. Maybe run both in this?
+# output all accuracies/sdevs and indicate most useful regression and the hyperparameters for it.
+# Run the whole thing.
 
 def catboost_regression(X, y):
     # # # Cat Boost Regression:
@@ -181,42 +44,179 @@ def catboost_regression(X, y):
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=83)
 
-    # Gridsearch Cross-Validation
-    regressor = CatBoostRegressor(silent=True)
-    parameters = [{'max_depth': [3, 4, 5],
-                   'n_estimators':[100, 200, 300]}]
-    grid_search = GridSearchCV(estimator=regressor,
-                               param_grid=parameters,
-                               scoring='r2',
-                               cv=10,
-                               n_jobs=-1)  # n_jobs = -1 means it will use all CPU cores
-    grid_search.fit(X_train, y_train)
-    df_gridsearch = pd.DataFrame(grid_search.cv_results_)
-    df_gridsearch['params'] = df_gridsearch['params'].astype("str")
-    df_gridsearch['regression'] = 'catboost'
-    return df_gridsearch
+    # Training CatBoost on the Training set
+    regressor = CatBoostRegressor()
+    regressor.fit(X_train, y_train)
+
+    accuracies = cross_val_score(
+        estimator=regressor, X=X_train, y=y_train, cv=10)
+
+    # Predicting the Test set results
+    y_pred = regressor.predict(X_test)
+    # precision argument indicates number of digits of precision for floating point output (default 8)
+    np.set_printoptions(precision=2)
+    r2 = r2_score(y_test, y_pred)
+    adj_r2 = 1-(1-r2)*(len(y)-1)/(len(y)-1-X.shape[1])
+    print('catboost output')
+    print(r2)
+    print(adj_r2)
+
+    # # Making the Confusion Matrix
+    # y_pred = regressor.predict(X_test)
+    # cm = confusion_matrix(y_test, y_pred)
+    # print(cm)
+    # accuracy_score(y_test, y_pred)
+
+    # Applying k-Fold Cross Validation
+
+    print("Accuracy: {:.2f} %".format(accuracies.mean()*100))
+    print("Standard Deviation: {:.2f} %".format(accuracies.std()*100))
+    print('_____________________')
 
 
-def xgboost_regression(X, y):
-    # # # XGBoost Regression
+# def linear_regression(X, y):
+#     # # # Multiple Linear Regression:
 
-    # Splitting the dataset into the Training set and Test set
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=83)
+#     # Splitting the dataset into the Training set and Test set
+#     X_train, X_test, y_train, y_test = train_test_split(
+#         X, y, test_size=0.2, random_state=83)
 
-    # Gridsearch Cross-Validation
-    regressor = XGBRegressor()
-    parameters = [{'max_depth': [3, 4, 5, 6]}]
-    grid_search = GridSearchCV(estimator=regressor,
-                               param_grid=parameters,
-                               scoring='r2',
-                               cv=10,
-                               n_jobs=-1)  # n_jobs = -1 means it will use all CPU cores
-    grid_search.fit(X_train, y_train)
-    df_gridsearch = pd.DataFrame(grid_search.cv_results_)
-    df_gridsearch['params'] = df_gridsearch['params'].astype("str")
-    df_gridsearch['regression'] = 'xgboost'
-    return df_gridsearch
+#     # Gridsearch Cross-Validation
+#     regressor = LinearRegression()
+#     parameters = [{'fit_intercept': [True, False]}]
+#     grid_search = GridSearchCV(estimator=regressor,
+#                                param_grid=parameters,
+#                                scoring='r2',
+#                                cv=10,
+#                                n_jobs=-1)  # n_jobs = -1 means it will use all CPU cores
+#     grid_search.fit(X_train, y_train)
+#     df_gridsearch = pd.DataFrame(grid_search.cv_results_)
+#     df_gridsearch['params'] = df_gridsearch['params'].astype("str")
+#     df_gridsearch['regression'] = 'linear'
+#     return df_gridsearch
+
+
+# def polynomial_regression(X, y):
+#     # # # Polynomial Regression:
+
+#     # Splitting the dataset into the Training set and Test set
+#     X_train, X_test, y_train, y_test = train_test_split(
+#         X, y, test_size=0.2, random_state=83)
+
+#     # Gridsearch Cross-Validation
+#     regressor = LinearRegression()
+#     degrees = [2]
+#     output_data = []
+#     for deg in degrees:
+#         poly_features = PolynomialFeatures(degree=deg)
+#         X_train_poly = poly_features.fit_transform(X_train)
+#         regressor = LinearRegression()
+#         # parameters = [{'fit_intercept': [True], 'normalize':[
+#         #     True, False]}, {'fit_intercept': [False]}]
+#         parameters = [{'fit_intercept': [True, False]}]
+#         grid_search = GridSearchCV(estimator=regressor,
+#                                    param_grid=parameters,
+#                                    scoring='r2',
+#                                    cv=10,
+#                                    n_jobs=-1)  # n_jobs = -1 means it will use all CPU cores
+#         grid_search.fit(X_train_poly, y_train)
+#         test_gridsearch = pd.DataFrame(grid_search.cv_results_)
+#         test_gridsearch['params'] = test_gridsearch['params'].astype("str")
+#         test_gridsearch['params'] = test_gridsearch['params'] + \
+#             ' + degree=' + str(deg)
+#         test_gridsearch['regression'] = 'poly'
+#         output_data.append(test_gridsearch)
+#     df_gridsearch = pd.concat(output_data)
+
+#     return df_gridsearch
+
+
+# def support_vector_regression(X, y):
+#     # # # SVR:
+#     y = y.reshape(len(y), 1)
+
+#     # Splitting the dataset into the Training set and Test set
+#     X_train, X_test, y_train, y_test = train_test_split(
+#         X, y, test_size=0.2, random_state=83)
+
+#     # Feature Scaling
+#     sc_X = StandardScaler()
+#     sc_y = StandardScaler()
+#     X_train = sc_X.fit_transform(X_train)
+#     y_train = sc_y.fit_transform(y_train)
+
+#     # Gridsearch Cross-Validation
+#     regressor = SVR()
+#     parameters = [{'kernel': ['linear'], 'C': [0.1, 1, 5]},
+#                   {'kernel': ['rbf', 'sigmoid'], 'gamma': [
+#                       0.0001, 0.01, 0.1, 1, 5, 10], 'C': [0.1, 1, 5]},
+#                   {'kernel': ['poly'], 'gamma': [0.0001, 0.001, 0.01],  'C': [0.1, 1, 5], 'degree': [2, 3]}]
+
+#     # {'kernel': ['linear'], 'C': [0.1, 1, 5, 10]} took 17 seconds
+#     # # # Keep C at 10 or less since it can take a long time
+#     # rbf alone was 15 seconds
+#     # sigmoid alone was 13 seconds
+#     # rbf, sigmoid was 28 seconds
+#     # {'kernel': ['rbf', 'sigmoid'],'gamma': [0.0001, 0.01, 0.1, 1, 5, 10], 'C': [0.1, 1, 5, 10]} took 14 seconds
+#     # # # Keep C at 10 or less since it can take a long time
+#     # poly with gamma 1 took 294 seconds.
+#     # {'kernel': ['poly'], 'gamma': [0.5], 'degree': [2, 3]} took 54 seconds.
+#     # parameters = {'kernel': ['poly'], 'gamma': [0.0001, 0.01, 0.1],  'C': [0.1, 1, 5, 10], 'degree': [2, 3]} took 26 seconds
+#     grid_search = GridSearchCV(estimator=regressor,
+#                                param_grid=parameters,
+#                                scoring='r2',
+#                                cv=10,
+#                                n_jobs=-1)  # n_jobs = -1 means it will use all CPU cores
+#     grid_search.fit(X_train, y_train.ravel())
+#     df_gridsearch = pd.DataFrame(grid_search.cv_results_)
+#     df_gridsearch['params'] = df_gridsearch['params'].astype("str")
+#     df_gridsearch['regression'] = 'svr'
+#     return df_gridsearch
+
+
+# def decision_tree_regression(X, y):
+#     # # # Decision Tree:
+
+#     # Splitting the dataset into the Training set and Test set
+#     X_train, X_test, y_train, y_test = train_test_split(
+#         X, y, test_size=0.2, random_state=83)
+
+#     # Gridsearch Cross-Validation
+#     regressor = DecisionTreeRegressor(random_state=0)
+#     parameters = [{'criterion': ['squared_error',
+#                                  'friedman_mse', 'absolute_error', 'poisson']}]
+#     grid_search = GridSearchCV(estimator=regressor,
+#                                param_grid=parameters,
+#                                scoring='r2',
+#                                cv=10,
+#                                n_jobs=-1)  # n_jobs = -1 means it will use all CPU cores
+#     grid_search.fit(X_train, y_train)
+#     df_gridsearch = pd.DataFrame(grid_search.cv_results_)
+#     df_gridsearch['params'] = df_gridsearch['params'].astype("str")
+#     df_gridsearch['regression'] = 'decision_tree'
+#     return df_gridsearch
+
+
+# def random_forest_regression(X, y):
+#     # # # Random Forest:
+#     # Splitting the dataset into the Training set and Test set
+#     X_train, X_test, y_train, y_test = train_test_split(
+#         X, y, test_size=0.2, random_state=83)
+
+#     # Gridsearch Cross-Validation
+#     regressor = RandomForestRegressor()
+#     parameters = [{'n_estimators': [10, 100, 200], 'criterion': [
+#         'squared_error', 'poisson']}]
+#     grid_search = GridSearchCV(estimator=regressor,
+#                                param_grid=parameters,
+#                                scoring='r2',
+#                                cv=10,
+#                                n_jobs=-1)  # n_jobs = -1 means it will use all CPU cores
+#     grid_search.fit(X_train, y_train)
+#     df_gridsearch = pd.DataFrame(grid_search.cv_results_)
+#     df_gridsearch['params'] = df_gridsearch['params'].astype("str")
+#     df_gridsearch['regression'] = 'random_forest'
+#     return df_gridsearch
 
 
 def data_and_regression_selector(data, independent_sets, dependent_variable):
@@ -262,64 +262,24 @@ def data_and_regression_selector(data, independent_sets, dependent_variable):
         X = np.array(ct.fit_transform(X))
 
     # Taking care of missing data
+    # Create imputer object that will replace any nan values with average of the column
     imputer = SimpleImputer(missing_values=np.nan, strategy='mean')
-    imputer.fit(X[:])
+    imputer.fit(X[:])  # Call fit method of imputer to create averages for all columns. Arguments specify all rows and the Age + Salary columns (ignore country column to avoid error since country is all strings)
     # Transform method then does the replacement of all the nan with mean
     X[:] = imputer.transform(X[:])
 
     independent_variables = ', '.join(independent_sets)
 
+    cat_start = time.perf_counter()
+    cat_boost = catboost_regression(X, y)
+    print(time.perf_counter() - cat_start)
+    funcs_run = time.perf_counter()
+    raise ValueError
+
     times = []
-    df_gridsearch_results = []
     start_regs = time.perf_counter()
-    df_gridsearch_results.append(linear_regression(X, y))
 
-    linear_fin = time.perf_counter()
-    times.append(linear_fin - start_regs)
-    print(f'lin_reg took: {times[-1]}')
-
-    if df_gridsearch_results[0]['mean_test_score'].max() >= 0.5:
-        df_gridsearch_results.append(polynomial_regression(X, y))
-
-        poly_fin = time.perf_counter()
-        times.append(poly_fin - linear_fin)
-        print(f'poly_reg took: {times[-1]}')
-
-        df_gridsearch_results.append(support_vector_regression(X, y))
-
-        svr_fin = time.perf_counter()
-        times.append(svr_fin - poly_fin)
-        print(f'svr_reg took: {times[-1]}')
-
-        df_gridsearch_results.append(decision_tree_regression(X, y))
-
-        dt_fin = time.perf_counter()
-        times.append(dt_fin - svr_fin)
-        print(f'dt_reg took: {times[-1]}')
-
-        df_gridsearch_results.append(random_forest_regression(X, y))
-
-        rf_fin = time.perf_counter()
-        times.append(rf_fin - dt_fin)
-        print(f'rf_reg took: {times[-1]}')
-
-        df_gridsearch_results.append(catboost_regression(X, y))
-        cat_fin = time.perf_counter()
-        times.append(cat_fin - rf_fin)
-        print(f'cat_reg took: {times[-1]}')
-
-        df_gridsearch_results.append(xgboost_regression(X, y))
-        xg_fin = time.perf_counter()
-        times.append(xg_fin - cat_fin)
-        print(f'xg_reg took: {times[-1]}')
-
-    df_all_gridsearch = pd.concat(df_gridsearch_results)
-    df_all_gridsearch['independent_variables'] = independent_variables
-    df_all_gridsearch = df_all_gridsearch[['independent_variables', 'params', 'mean_test_score', 'std_test_score', 'rank_test_score', 'regression',
-                                           'mean_fit_time', 'std_fit_time', 'mean_score_time', 'std_score_time',
-                                           'split0_test_score', 'split1_test_score', 'split2_test_score', 'split3_test_score', 'split4_test_score', 'split5_test_score', 'split6_test_score', 'split7_test_score', 'split8_test_score', 'split9_test_score']]
-    # print(df_all_gridsearch['mean_test_score'].max())
-    print(f'{independent_sets}: {str(times)} ({str(sum(times))} seconds)')
+    print(f'{independent_sets}: {str(times)}')
     return df_all_gridsearch.values.tolist()
 
 
@@ -356,7 +316,7 @@ if __name__ == '__main__':
                              'pserved', 'type', 'primary_source_water_type', 'ur', 'water_sy_1', 'pop100'], axis=1, inplace=True)
     df_wsp_score_census = df_wsp_score_census[['n_race', 'n_white_alone', 'n_black_alone', 'n_ai_and_an_alone', 'n_asian_alone', 'n_nh_and_opi_alone', 'n_other_alone', 'n_two_or_more_races',
                                                'hh_size', 'hh_1worker', 'hh_2worker', 'hh_3+worker', 'n_hh_3ppl', 'n_hh_4+ppl',
-                                              'n_hh_type', 'n_hh_type_fam', 'n_hh_type_fam_mcf', 'n_hh_type_fam_mcf_1unit', 'n_hh_type_fam_mcf_2unit', 'n_hh_type_fam_mcf_mh_and_other', 'n_hh_type_fam_other', 'n_hh_type_fam_other_mhh_nsp', 'n_hh_type_fam_other_mhh_nsp_1unit', 'n_hh_type_fam_other_mhh_nsp_2unit', 'n_hh_type_fam_other_mhh_nsp_mh_and_other', 'n_hh_type_fam_other_fhh_nsp', 'n_hh_type_fam_other_fhh_nsp_1unit', 'n_hh_type_fam_other_fhh_nsp_2unit', 'n_hh_type_fam_other_fhh_nsp_mh_and_other', 'n_hh_type_nonfam', 'n_hh_type_nonfam_1unit', 'n_hh_type_nonfam_2unit', 'n_hh_type_nonfam_mh_and_other',
+                                               'n_hh_type', 'n_hh_type_fam', 'n_hh_type_fam_mcf', 'n_hh_type_fam_mcf_1unit', 'n_hh_type_fam_mcf_2unit', 'n_hh_type_fam_mcf_mh_and_other', 'n_hh_type_fam_other', 'n_hh_type_fam_other_mhh_nsp', 'n_hh_type_fam_other_mhh_nsp_1unit', 'n_hh_type_fam_other_mhh_nsp_2unit', 'n_hh_type_fam_other_mhh_nsp_mh_and_other', 'n_hh_type_fam_other_fhh_nsp', 'n_hh_type_fam_other_fhh_nsp_1unit', 'n_hh_type_fam_other_fhh_nsp_2unit', 'n_hh_type_fam_other_fhh_nsp_mh_and_other', 'n_hh_type_nonfam', 'n_hh_type_nonfam_1unit', 'n_hh_type_nonfam_2unit', 'n_hh_type_nonfam_mh_and_other',
                                                'n_bachelors_deg', 'n_seng_compt_mat_stat_deg', 'n_seng_bio_ag_env_deg', 'n_seng_phys_sci_deg', 'n_seng_psych_deg', 'n_seng_soc_sci_deg', 'n_seng_eng_deg', 'n_seng_mds_deg', 'n_seng_rltd_deg', 'n_bus_deg', 'n_edu_deg', 'n_aho_lit_lang_deg', 'n_aho_lib_arts_and_hist_deg', 'n_aho_vis_perf_art_deg', 'n_aho_comm_deg', 'n_aho_other_deg',
                                                'n_hh_income', 'n_hh_income_lt_10k', 'n_hh_income_10k_15k', 'n_hh_income_15k_20k', 'n_hh_income_20k_25k', 'n_hh_income_25k_30k', 'n_hh_income_30k_35k', 'n_hh_income_35k_40k', 'n_hh_income_40k_45k', 'n_hh_income_45k_50k', 'n_hh_income_50k_60k', 'n_hh_income_60k_75k', 'n_hh_income_75k_100k', 'n_hh_income_100k_125k', 'n_hh_income_125k_150k', 'n_hh_income_150k_200k', 'n_hh_income_gt_200k',
                                                'n_hh_housing_units', 'n_hh_own', 'n_hh_rent',
@@ -490,9 +450,6 @@ if __name__ == '__main__':
     var_combinations.remove(())
     print(
         f'Powerset has {len(var_combinations)} values and took: {time.perf_counter()-start}')
-
-    # Start with the heaviest regressions first to find if hyperparameters need to be cut
-    var_combinations = list(reversed(var_combinations))
     var_comb_sublists = []
     sublist_size = 60
     for i in range(0, len(var_combinations), sublist_size):
@@ -502,12 +459,12 @@ if __name__ == '__main__':
     for i in var_comb_sublists:
         print(len(i))
 
-    # ('hh_size', 'bdeg', 'insurance', 'gw_sw', 'timeline_characteristics')
+    # ['hh_size', 'bdeg', 'insurance', 'gw_sw', 'timeline_characteristics']
     # Should have r2 of 0.728174973621484 & adj_r2 of 0.719301468951892
-    # test = data_and_regression_selector(
-    #     dataset, ('hh_size', 'bdeg', 'insurance', 'gw_sw', 'timeline_characteristics'), 'compliance_percentile')
-    # print(test)
-    # raise ValueError
+    test = data_and_regression_selector(dataset, ('race', 'hh_size', 'bdeg', 'hh_income',
+                                        'hh_own', 'timeline_characteristics', 'area', 'population'), 'compliance_percentile')
+    print(test)
+    raise ValueError
 
     # FOR TESTING
     # var_combinations = var_combinations[::171]
@@ -568,14 +525,14 @@ if __name__ == '__main__':
                 'replace')*(sublist_index + dependent_index == 0) + ('append')*(sublist_index + dependent_index > 0)
 
             conn = wdc.sql_query_conn()
-            df_reg.to_sql('ml_regressions_gridsearch', conn,
+            df_reg.to_sql('ml_gridsearch_regressions', conn,
                           if_exists=append_or_replace, index=False)
             conn.close()
 
-    wdc.create_index('ml_regressions_gridsearch', independent_variables='ASC')
-    wdc.create_index('ml_regressions_gridsearch', params='ASC')
-    wdc.create_index('ml_regressions_gridsearch', mean_test_score='ASC')
-    wdc.create_index('ml_regressions_gridsearch', regression='ASC')
+    wdc.create_index('ml_gridsearch_regressions', independent_variables='ASC')
+    wdc.create_index('ml_gridsearch_regressions', params='ASC')
+    wdc.create_index('ml_gridsearch_regressions', mean_test_score='ASC')
+    wdc.create_index('ml_gridsearch_regressions', regression='ASC')
 
     finish = time.perf_counter()
     print(f'Seconds: {finish - start}')
@@ -587,4 +544,13 @@ if __name__ == '__main__':
     print(s.getvalue())
 
 
-# Seconds: 69684.5779637
+# Powerset has 2048 values and took: 2.832997000001342
+# Results creation: 0.4534356999993179
+# Results iteration: 1999.6508173999991
+# Results creation: 0.46176809999997204
+# Results iteration: 2133.1124411
+# Results creation: 0.551201400001446
+# Results iteration: 2067.3997646999997
+# Results creation: 0.4365813000003982
+# Results iteration: 2101.424882600002
+# Seconds: 8309.224779200002

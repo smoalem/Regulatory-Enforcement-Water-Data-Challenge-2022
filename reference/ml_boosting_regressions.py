@@ -31,11 +31,13 @@ from catboost import CatBoostRegressor
 from sklearn.model_selection import cross_val_score, GridSearchCV
 
 
-# 11.22 to do:
-# add k-fold and gridsearchcv to all and run to get better accuracy and hyperparameters.
-# research catboost and xgboost to understand how they each function. Maybe run both in this?
-# output all accuracies/sdevs and indicate most useful regression and the hyperparameters for it.
-# Run the whole thing.
+# 12.3 to do:
+# In ml_gridsearch_of_census_data, have decision tree reg include gridsearch cv of 'max_depth': [3,5, 10, None]
+# In this file (ml_boosting_regressions), include xgboost
+# # # Also update with hyperparameters, at least on xgboost
+# # # Ultimatley will need to write to sql table with the hyperparameters and their final output
+# Make file that takes final output of ml_boosting_regressions and compared y_pred against y_actual using multiple accuracy measurements relevant for regressions
+# Rename files to more obvious names
 
 def catboost_regression(X, y):
     # # # Cat Boost Regression:
@@ -74,169 +76,149 @@ def catboost_regression(X, y):
     print('_____________________')
 
 
-def linear_regression(X, y):
-    # # # Multiple Linear Regression:
+# def linear_regression(X, y):
+#     # # # Multiple Linear Regression:
 
-    # Splitting the dataset into the Training set and Test set
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=83)
+#     # Splitting the dataset into the Training set and Test set
+#     X_train, X_test, y_train, y_test = train_test_split(
+#         X, y, test_size=0.2, random_state=83)
 
-    # Training the Multiple Linear Regression model on the Training set
-    regressor = LinearRegression()
-
-    regressor.fit(X_train, y_train)
-    # Predicting the Test set results
-    y_pred = regressor.predict(X_test)
-    # precision argument indicates number of digits of precision for floating point output (default 8)
-    np.set_printoptions(precision=2)
-    r2 = r2_score(y_test, y_pred)
-    adj_r2 = 1-(1-r2)*(len(y)-1)/(len(y)-1-X.shape[1])
-
-    accuracies = cross_val_score(
-        estimator=regressor, X=X_train, y=y_train, cv=10)
-
-    print('lin_reg output')
-    print(r2)
-    print(adj_r2)
-
-    # Applying k-Fold Cross Validation
-
-    print("Accuracy: {:.2f} %".format(accuracies.mean()*100))
-    print("Standard Deviation: {:.2f} %".format(accuracies.std()*100))
-    print('_____________________')
-    return [r2, adj_r2]
+#     # Gridsearch Cross-Validation
+#     regressor = LinearRegression()
+#     parameters = [{'fit_intercept': [True, False]}]
+#     grid_search = GridSearchCV(estimator=regressor,
+#                                param_grid=parameters,
+#                                scoring='r2',
+#                                cv=10,
+#                                n_jobs=-1)  # n_jobs = -1 means it will use all CPU cores
+#     grid_search.fit(X_train, y_train)
+#     df_gridsearch = pd.DataFrame(grid_search.cv_results_)
+#     df_gridsearch['params'] = df_gridsearch['params'].astype("str")
+#     df_gridsearch['regression'] = 'linear'
+#     return df_gridsearch
 
 
-def polynomial_regression(X, y):
-    # # # Polynomial Regression:
+# def polynomial_regression(X, y):
+#     # # # Polynomial Regression:
 
-    # Splitting the dataset into the Training set and Test set
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=83)
+#     # Splitting the dataset into the Training set and Test set
+#     X_train, X_test, y_train, y_test = train_test_split(
+#         X, y, test_size=0.2, random_state=83)
 
-    # Training the Polynomial Regression model on the Training dataset
-    poly_reg = PolynomialFeatures(degree=2)
-    X_poly = poly_reg.fit_transform(X_train)
-    regressor = LinearRegression()
-    regressor.fit(X_poly, y_train)
-    # Predicting the Test set results
-    y_pred = regressor.predict(poly_reg.transform(X_test))
-    np.set_printoptions(precision=2)
-    # print(np.concatenate((y_pred.reshape(len(y_pred),1), y_test.reshape(len(y_test),1)),1))
-    r2 = r2_score(y_test, y_pred)
-    adj_r2 = 1-(1-r2)*(len(y)-1)/(len(y)-1-X.shape[1])
+#     # Gridsearch Cross-Validation
+#     regressor = LinearRegression()
+#     degrees = [2]
+#     output_data = []
+#     for deg in degrees:
+#         poly_features = PolynomialFeatures(degree=deg)
+#         X_train_poly = poly_features.fit_transform(X_train)
+#         regressor = LinearRegression()
+#         # parameters = [{'fit_intercept': [True], 'normalize':[
+#         #     True, False]}, {'fit_intercept': [False]}]
+#         parameters = [{'fit_intercept': [True, False]}]
+#         grid_search = GridSearchCV(estimator=regressor,
+#                                    param_grid=parameters,
+#                                    scoring='r2',
+#                                    cv=10,
+#                                    n_jobs=-1)  # n_jobs = -1 means it will use all CPU cores
+#         grid_search.fit(X_train_poly, y_train)
+#         test_gridsearch = pd.DataFrame(grid_search.cv_results_)
+#         test_gridsearch['params'] = test_gridsearch['params'].astype("str")
+#         test_gridsearch['params'] = test_gridsearch['params'] + \
+#             ' + degree=' + str(deg)
+#         test_gridsearch['regression'] = 'poly'
+#         output_data.append(test_gridsearch)
+#     df_gridsearch = pd.concat(output_data)
 
-    accuracies = cross_val_score(
-        estimator=regressor, X=X_train, y=y_train, cv=10)
-    print('poly output')
-    print(r2)
-    print(adj_r2)
-
-    # Applying k-Fold Cross Validation
-
-    print("Accuracy: {:.2f} %".format(accuracies.mean()*100))
-    print("Standard Deviation: {:.2f} %".format(accuracies.std()*100))
-    print('_____________________')
-    return [r2, adj_r2]
-
-
-def support_vector_regression(X, y):
-    # # # SVR:
-    y = y.reshape(len(y), 1)
-
-    # Splitting the dataset into the Training set and Test set
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=83)
-    # Feature Scaling
-    sc_X = StandardScaler()
-    sc_y = StandardScaler()
-    X_train = sc_X.fit_transform(X_train)
-    y_train = sc_y.fit_transform(y_train)
-    # Training the SVR model on the Training set
-    regressor = SVR(kernel='rbf')
-    # regressor.fit(X_train, y_train)
-    regressor.fit(X_train, np.ravel(y_train, order="c"))
-    # # Predicting the Test set results
-
-    y_pred = sc_y.inverse_transform(
-        [regressor.predict(sc_X.transform(X_test))])
-    np.set_printoptions(precision=2)
-    # print(np.concatenate((y_pred.reshape(len(y_pred),1), y_test.reshape(len(y_test),1)),1))
-    r2 = r2_score(y_test, y_pred)
-    adj_r2 = 1-(1-r2)*(len(y)-1)/(len(y)-1-X.shape[1])
-
-    accuracies = cross_val_score(
-        estimator=regressor, X=X_train, y=y_train, cv=10)
-
-    print('svr output')
-    print(r2)
-    print(adj_r2)
-    # Applying k-Fold Cross Validation
-    print("Accuracy: {:.2f} %".format(accuracies.mean()*100))
-    print("Standard Deviation: {:.2f} %".format(accuracies.std()*100))
-    print('_____________________')
-    return [r2, adj_r2]
+#     return df_gridsearch
 
 
-def decision_tree_regression(X, y):
-    # # # Decision Tree:
+# def support_vector_regression(X, y):
+#     # # # SVR:
+#     y = y.reshape(len(y), 1)
 
-    # Splitting the dataset into the Training set and Test set
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=83)
+#     # Splitting the dataset into the Training set and Test set
+#     X_train, X_test, y_train, y_test = train_test_split(
+#         X, y, test_size=0.2, random_state=83)
 
-    # Training the Decision Tree Regression model on the Training set
-    regressor = DecisionTreeRegressor(random_state=0)
-    regressor.fit(X_train, y_train)
-    # Predicting the Test set results
-    y_pred = regressor.predict(X_test)
-    np.set_printoptions(precision=2)
-    # print(np.concatenate((y_pred.reshape(len(y_pred),1), y_test.reshape(len(y_test),1)),1))
-    r2 = r2_score(y_test, y_pred)
-    adj_r2 = 1-(1-r2)*(len(y)-1)/(len(y)-1-X.shape[1])
+#     # Feature Scaling
+#     sc_X = StandardScaler()
+#     sc_y = StandardScaler()
+#     X_train = sc_X.fit_transform(X_train)
+#     y_train = sc_y.fit_transform(y_train)
 
-    accuracies = cross_val_score(
-        estimator=regressor, X=X_train, y=y_train, cv=10)
+#     # Gridsearch Cross-Validation
+#     regressor = SVR()
+#     parameters = [{'kernel': ['linear'], 'C': [0.1, 1, 5]},
+#                   {'kernel': ['rbf', 'sigmoid'], 'gamma': [
+#                       0.0001, 0.01, 0.1, 1, 5, 10], 'C': [0.1, 1, 5]},
+#                   {'kernel': ['poly'], 'gamma': [0.0001, 0.001, 0.01],  'C': [0.1, 1, 5], 'degree': [2, 3]}]
 
-    print('dec_tree output')
-    print(r2)
-    print(adj_r2)
+#     # {'kernel': ['linear'], 'C': [0.1, 1, 5, 10]} took 17 seconds
+#     # # # Keep C at 10 or less since it can take a long time
+#     # rbf alone was 15 seconds
+#     # sigmoid alone was 13 seconds
+#     # rbf, sigmoid was 28 seconds
+#     # {'kernel': ['rbf', 'sigmoid'],'gamma': [0.0001, 0.01, 0.1, 1, 5, 10], 'C': [0.1, 1, 5, 10]} took 14 seconds
+#     # # # Keep C at 10 or less since it can take a long time
+#     # poly with gamma 1 took 294 seconds.
+#     # {'kernel': ['poly'], 'gamma': [0.5], 'degree': [2, 3]} took 54 seconds.
+#     # parameters = {'kernel': ['poly'], 'gamma': [0.0001, 0.01, 0.1],  'C': [0.1, 1, 5, 10], 'degree': [2, 3]} took 26 seconds
+#     grid_search = GridSearchCV(estimator=regressor,
+#                                param_grid=parameters,
+#                                scoring='r2',
+#                                cv=10,
+#                                n_jobs=-1)  # n_jobs = -1 means it will use all CPU cores
+#     grid_search.fit(X_train, y_train.ravel())
+#     df_gridsearch = pd.DataFrame(grid_search.cv_results_)
+#     df_gridsearch['params'] = df_gridsearch['params'].astype("str")
+#     df_gridsearch['regression'] = 'svr'
+#     return df_gridsearch
 
-    # Applying k-Fold Cross Validation
 
-    print("Accuracy: {:.2f} %".format(accuracies.mean()*100))
-    print("Standard Deviation: {:.2f} %".format(accuracies.std()*100))
-    print('_____________________')
-    return [r2, adj_r2]
+# def decision_tree_regression(X, y):
+#     # # # Decision Tree:
+
+#     # Splitting the dataset into the Training set and Test set
+#     X_train, X_test, y_train, y_test = train_test_split(
+#         X, y, test_size=0.2, random_state=83)
+
+#     # Gridsearch Cross-Validation
+#     regressor = DecisionTreeRegressor(random_state=0)
+#     parameters = [{'criterion': ['squared_error',
+#                                  'friedman_mse', 'absolute_error', 'poisson']}]
+#     grid_search = GridSearchCV(estimator=regressor,
+#                                param_grid=parameters,
+#                                scoring='r2',
+#                                cv=10,
+#                                n_jobs=-1)  # n_jobs = -1 means it will use all CPU cores
+#     grid_search.fit(X_train, y_train)
+#     df_gridsearch = pd.DataFrame(grid_search.cv_results_)
+#     df_gridsearch['params'] = df_gridsearch['params'].astype("str")
+#     df_gridsearch['regression'] = 'decision_tree'
+#     return df_gridsearch
 
 
-def random_forest_regression(X, y):
-    # # # Random Forest:
-    # Splitting the dataset into the Training set and Test set
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=83)
-    # Training the Random Forest Regression model on the whole dataset
-    regressor = RandomForestRegressor(n_estimators=100, random_state=0)
-    regressor.fit(X_train, y_train)
-    # Predicting the Test set results
-    y_pred = regressor.predict(X_test)
-    np.set_printoptions(precision=2)
-    # print(np.concatenate((y_pred.reshape(len(y_pred),1), y_test.reshape(len(y_test),1)),1))
-    r2 = r2_score(y_test, y_pred)
-    adj_r2 = 1-(1-r2)*(len(y)-1)/(len(y)-1-X.shape[1])
+# def random_forest_regression(X, y):
+#     # # # Random Forest:
+#     # Splitting the dataset into the Training set and Test set
+#     X_train, X_test, y_train, y_test = train_test_split(
+#         X, y, test_size=0.2, random_state=83)
 
-    accuracies = cross_val_score(
-        estimator=regressor, X=X_train, y=y_train, cv=10)
-
-    print('rand_forest output')
-    print(r2)
-    print(adj_r2)
-    # Applying k-Fold Cross Validation
-
-    print("Accuracy: {:.2f} %".format(accuracies.mean()*100))
-    print("Standard Deviation: {:.2f} %".format(accuracies.std()*100))
-    print('_____________________')
-    return [r2, adj_r2]
+#     # Gridsearch Cross-Validation
+#     regressor = RandomForestRegressor()
+#     parameters = [{'n_estimators': [10, 100, 200], 'criterion': [
+#         'squared_error', 'poisson']}]
+#     grid_search = GridSearchCV(estimator=regressor,
+#                                param_grid=parameters,
+#                                scoring='r2',
+#                                cv=10,
+#                                n_jobs=-1)  # n_jobs = -1 means it will use all CPU cores
+#     grid_search.fit(X_train, y_train)
+#     df_gridsearch = pd.DataFrame(grid_search.cv_results_)
+#     df_gridsearch['params'] = df_gridsearch['params'].astype("str")
+#     df_gridsearch['regression'] = 'random_forest'
+#     return df_gridsearch
 
 
 def data_and_regression_selector(data, independent_sets, dependent_variable):
@@ -260,7 +242,6 @@ def data_and_regression_selector(data, independent_sets, dependent_variable):
     # print(independent_sets)
     if independent_sets == 'all':
         independent_sets = list(ind_set_dict.keys())
-
     for ind in independent_sets:
         ind_variables.extend(ind_set_dict[ind])
     filtered_data = data[ind_variables]
@@ -291,46 +272,17 @@ def data_and_regression_selector(data, independent_sets, dependent_variable):
 
     independent_variables = ', '.join(independent_sets)
 
-    # X_train, X_test, y_train, y_test = train_test_split(
-    #     X, y, test_size=0.2, random_state=0)
-
-    # print(X_train)
-    # print(y_train)
-    # raise ValueError
-    start_regs = time.perf_counter()
-    linear = linear_regression(X, y)
-    linear_fin = time.perf_counter()
-    print(linear_fin - start_regs)
-    polynomial = polynomial_regression(X, y)
-    poly_fin = time.perf_counter()
-    print(poly_fin - linear_fin)
-    svr = support_vector_regression(X, y)
-    svr_fin = time.perf_counter()
-    print(svr_fin - poly_fin)
-    decision_tree = decision_tree_regression(X, y)
-    dt_fin = time.perf_counter()
-    print(dt_fin - svr_fin)
-    random_forest = random_forest_regression(X, y)
-    print(time.perf_counter() - dt_fin)
-    print(time.perf_counter() - start_regs)
+    cat_start = time.perf_counter()
+    cat_boost = catboost_regression(X, y)
+    print(time.perf_counter() - cat_start)
+    funcs_run = time.perf_counter()
     raise ValueError
 
-    # cat_start = time.perf_counter()
-    # cat_boost = catboost_regression(X, y)
-    # print(time.perf_counter() - cat_start)
-    # funcs_run = time.perf_counter()
+    times = []
+    start_regs = time.perf_counter()
 
-    r2_output = [independent_variables, linear[0], polynomial[0],
-                 svr[0], decision_tree[0], random_forest[0]]
-    adj_r2_output = [independent_variables, linear[1],
-                     polynomial[1], svr[1], decision_tree[1], random_forest[1]]
-
-    # fin_func = time.perf_counter()
-
-    # print(f'Setup vars: {fin_vars - start_func}. Setup data: {data_setup - fin_vars}. Run regressions: {funcs_run-data_setup}. Total time: {fin_func - start_func}')
-    # print(f'linear: {linear_fin-start_regs}, poly: {poly_fin-linear_fin}, svr: {svr_fin-poly_fin}, dt: {dt_fin-svr_fin}, rf: {funcs_run - dt_fin}')
-
-    return [r2_output, adj_r2_output]
+    print(f'{independent_sets}: {str(times)}')
+    return df_all_gridsearch.values.tolist()
 
 
 if __name__ == '__main__':
@@ -358,6 +310,9 @@ if __name__ == '__main__':
         df_census, df_wsp_and_scores, left_on='sabl_pwsid', right_on='water_system_number', how='left')
     df_wsp_score_census = df_wsp_score_census[(df_wsp_score_census['ave_red_lean_score'] != 'PMD') & (
         df_wsp_score_census['ave_red_lean_score'] != 'TBD') & (df_wsp_score_census['ave_red_lean_score'] != 'NA')]
+
+    df_wsp_score_census = df_wsp_score_census[(df_wsp_score_census['ave_overage_rate'] != 'PMD') & (
+        df_wsp_score_census['ave_overage_rate'] != 'TBD') & (df_wsp_score_census['ave_overage_rate'] != 'NA')]
 
     df_wsp_score_census.drop(['n_100pct_pov_lvl', 'n_101_149pct_pov_lvl', 'n_150pct_pov_lvl', 'id',
                              'pserved', 'type', 'primary_source_water_type', 'ur', 'water_sy_1', 'pop100'], axis=1, inplace=True)
@@ -494,83 +449,92 @@ if __name__ == '__main__':
     var_combinations = list()
     for n in range(len(variable_sets) + 1):
         var_combinations += list(combinations(variable_sets, n))
+    var_combinations.remove(())
     print(
         f'Powerset has {len(var_combinations)} values and took: {time.perf_counter()-start}')
+    var_comb_sublists = []
+    sublist_size = 60
+    for i in range(0, len(var_combinations), sublist_size):
+        new_var_sublist = var_combinations[i:i+sublist_size]
+        var_comb_sublists.append(new_var_sublist)
 
-    # print(dataset)
-    # print(type(dataset))
-    # print(dataset.columns.to_list())
-    # raise ValueError
+    for i in var_comb_sublists:
+        print(len(i))
 
-    # # ['hh_size', 'bdeg', 'insurance', 'gw_sw', 'timeline_characteristics']
-    # # Should have r2 of 0.728174973621484 & adj_r2 of 0.719301468951892
-    test = data_and_regression_selector(dataset, [
-                                        'hh_size', 'bdeg', 'gw_sw', 'timeline_characteristics'], 'compliance_score')
+    # ['hh_size', 'bdeg', 'insurance', 'gw_sw', 'timeline_characteristics']
+    # Should have r2 of 0.728174973621484 & adj_r2 of 0.719301468951892
+    test = data_and_regression_selector(dataset, ('race', 'hh_size', 'bdeg', 'hh_income',
+                                        'hh_own', 'timeline_characteristics', 'area', 'population'), 'compliance_percentile')
     print(test)
     raise ValueError
 
-    # print(var_combinations[-1])
-    # print(list(var_combinations[-1]))
-    # test = data_and_regression_selector(
-    #     dataset, var_combinations[-1], 'compliance_score')
-    # print(dataset)
-    # print(list(dataset['regulating'].unique()))
-    # regulators = ['DISTRICT_13_-_SAN_BERNARDINO', 'DISTRICT_06_-_SANTA_BARBARA', 'DISTRICT_02_-_LASSEN', 'DISTRICT_18_-_SONOMA', 'DISTRICT_17_-_SANTA_CLARA', 'DISTRICT_23_-_FRESNO', 'DISTRICT_11_-_MERCED', 'DISTRICT_04_-_SAN_FRANCISCO', 'DISTRICT_09_-_SACRAMENTO', 'LPA64_-_SACRAMENTO_COUNTY', 'DISTRICT_16_-_CENTRAL', 'DISTRICT_05_-_MONTEREY', 'DISTRICT_12_-_VISALIA', 'DISTRICT_22_-_ANGELES', 'DISTRICT_08_-_SANTA_ANA', 'DISTRICT_03_-_MENDOCINO', 'LPA57_-_MONTEREY_COUNTY', 'DISTRICT_15_-_METROPOLITAN', 'DISTRICT_19_-_TEHACHAPI', 'DISTRICT_10_-_STOCKTON', 'DISTRICT_21_-_VALLEY', 'DISTRICT_07_-_HOLLYWOOD', 'DISTRICT_24_-_TULARE',
-    #               'DISTRICT_01_-_KLAMATH', 'DISTRICT_25_-_MARIN', 'LPA67_-_SAN_DIEGO_COUNTY', 'DISTRICT_14_-_SAN_DIEGO', 'DISTRICT_20_-_RIVERSIDE', 'LPA66_-_SAN_BERNARDINO_COUNTY', 'LPA69_-_SAN_JOAQUIN_COUNTY', 'LPA72_-_SANTA_BARBARA_COUNTY', 'LPA49_-_LA_COUNTY', 'LPA75_-_SHASTA_COUNTY', 'LPA70_-_SAN_LUIS_OBISPO_COUNTY', 'LPA61_-_PLACER_COUNTY', 'LPA74_-_SANTA_CRUZ_COUNTY', 'LPA82_-_TEHAMA_COUNTY', 'LPA46_-_KINGS_COUNTY', 'LPA80_-_STANISLAUS_COUNTY', 'LPA43_-_IMPERIAL_COUNTY', 'LPA34_-_BUTTE_COUNTY', 'LPA63_-_RIVERSIDE_COUNTY', 'LPA50_-_MADERA_COUNTY', 'LPA62_-_PLUMAS_COUNTY', 'LPA37_-_CONTRA_COSTA_COUNTY', 'LPA87_-_YOLO_COUNTY']
-    # counter = 0
-    # for reg in regulators:
-    #     reg_df = dataset[dataset['regulating'] == reg]
-    #     print(reg_df['ave_red_lean_score'].mean())
+    # FOR TESTING
+    # var_combinations = var_combinations[::171]
+    # print('$$$')
+    # print(len(var_combinations))
+    # for i in var_combinations:
+    #     print(i)
 
-    #     counter += len(dataset[dataset['regulating'] == reg])
-    # print(counter)
-    # print(len(dataset))
-    # raise ValueError
-    # test = data_and_regression_selector(
-    #     dataset, ['timeline_characteristics'], 'compliance_score')
-    # print(test)
-    # raise ValueError
-    # var_combinations = var_combinations[-20:]
-    # var_combinations = var_combinations[:1]
-
-    # print(var_combinations)
-
+    # dependent_vars_to_test = [
+    #     'overage_rate', 'overage_percentile', 'compliance_score', 'compliance_percentile']
     dependent_vars_to_test = [
-        'overage_rate', 'overage_percentile', 'compliance_score', 'compliance_percentile']
+        'compliance_score', 'compliance_percentile', 'overage_rate', 'overage_percentile']
     for dependent in dependent_vars_to_test:
-        r2_outputs = []
-        adj_r2_outputs = []
-        r2_columns = ['independent_variable_sets', 'linear_r2',
-                      'polynomial_r2', 'svr_r2', 'dec_tree_r2', 'rand_forest_r2']
-        adj_r2_columns = ['independent_variable_sets', 'linear_adj_r2',
-                          'polynomial_adj_r2', 'svr_adj_r2', 'dec_tree_adj_r2', 'rand_forest_adj_r2']
-        r2_start = time.perf_counter()
-        with concurrent.futures.ProcessPoolExecutor() as executor:  # This is to use multiprocessing
-            results = executor.map(data_and_regression_selector, [
-                                   dataset]*len(var_combinations), var_combinations, [dependent]*len(var_combinations))
-            end_results_creation = time.perf_counter()
-            print(f'Results creation: {end_results_creation-r2_start}')
-            for result in results:
-                r2_outputs.append(result[0])
-                adj_r2_outputs.append(result[1])
+        sublist_times = []
+        dependent_index = dependent_vars_to_test.index(dependent)
+        for sublist in var_comb_sublists:
+
+            sublist_index = var_comb_sublists.index(sublist)
+            print(sublist_index)
+
+            # regression_columns = ['independent_variables', 'params', 'mean_test_score', 'std_test_score', 'rank_test_score', 'regression',
+            #                       'mean_fit_time', 'std_fit_time', 'mean_score_time', 'std_score_time',
+            #                       'split0_test_score', 'split1_test_score', 'split2_test_score', 'split3_test_score', 'split4_test_score', 'split5_test_score', 'split6_test_score', 'split7_test_score', 'split8_test_score', 'split9_test_score']
+            # regression_outputs = []
+            # regression_start = time.perf_counter()
+            # with concurrent.futures.ProcessPoolExecutor() as executor:  # This is to use multiprocessing
+            #     results = executor.map(data_and_regression_selector, [
+            #         dataset]*len(sublist), sublist, [dependent]*len(sublist))
+            #     end_results_creation = time.perf_counter()
+            #     print(
+            #         f'Results creation: {end_results_creation-regression_start}')
+            #     for result in results:
+            #         regression_outputs.extend(result)
+            #         # print(
+            #         #     f'Time: {str(time.perf_counter() - end_results_creation)}, Len of result: {str(len(result))}, Len of output:{str(len(regression_outputs))}')
+            #     print(
+            #         f'Results iteration: {time.perf_counter()-end_results_creation}')
+
+            regression_columns = ['independent_variables', 'params', 'mean_test_score', 'std_test_score', 'rank_test_score', 'regression',
+                                  'mean_fit_time', 'std_fit_time', 'mean_score_time', 'std_score_time',
+                                  'split0_test_score', 'split1_test_score', 'split2_test_score', 'split3_test_score', 'split4_test_score', 'split5_test_score', 'split6_test_score', 'split7_test_score', 'split8_test_score', 'split9_test_score']
+            regression_outputs = []
+            sublist_start = time.perf_counter()
+            for var_combo in sublist:
+                print(f'Trying: {var_combo}')
+                regression_outputs.extend(
+                    data_and_regression_selector(dataset, var_combo, dependent))
+            sublist_times.append(time.perf_counter() - sublist_start)
             print(
-                f'Results iteration: {time.perf_counter()-end_results_creation}')
+                f'\n\n\nSublist {sublist_index} finished in (seconds): {time.perf_counter() - sublist_start}')
+            print(
+                f'All sublist times for this dep variable (seconds): {sublist_times}\n\n')
 
-        df_r2 = pd.DataFrame(r2_outputs, columns=r2_columns)
-        df_adj_r2 = pd.DataFrame(adj_r2_outputs, columns=adj_r2_columns)
+            df_reg = pd.DataFrame(regression_outputs,
+                                  columns=regression_columns)
+            df_reg['dependent_variable'] = dependent
+            append_or_replace = (
+                'replace')*(sublist_index + dependent_index == 0) + ('append')*(sublist_index + dependent_index > 0)
 
-        df_r2['dependent_variable'] = dependent
-        df_adj_r2['dependent_variable'] = dependent
+            conn = wdc.sql_query_conn()
+            df_reg.to_sql('ml_gridsearch_regressions', conn,
+                          if_exists=append_or_replace, index=False)
+            conn.close()
 
-        append_or_replace = ('replace')*(dependent_vars_to_test.index(dependent)
-                                         == 0) + ('append')*(dependent_vars_to_test.index(dependent) > 0)
-
-        conn = wdc.sql_query_conn()
-        df_r2.to_sql('regression_r2_values', conn,
-                     if_exists=append_or_replace, index=False)
-        df_adj_r2.to_sql('regression_adj_r2_values', conn,
-                         if_exists=append_or_replace, index=False)
-        conn.close()
+    wdc.create_index('ml_gridsearch_regressions', independent_variables='ASC')
+    wdc.create_index('ml_gridsearch_regressions', params='ASC')
+    wdc.create_index('ml_gridsearch_regressions', mean_test_score='ASC')
+    wdc.create_index('ml_gridsearch_regressions', regression='ASC')
 
     finish = time.perf_counter()
     print(f'Seconds: {finish - start}')

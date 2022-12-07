@@ -45,7 +45,8 @@ def catboost_regression(X, y):
         X, y, test_size=0.2, random_state=83)
 
     # Training CatBoost on the Training set
-    regressor = CatBoostRegressor()
+    regressor = CatBoostRegressor(task_type="GPU",
+                           devices='0')
     regressor.fit(X_train, y_train)
 
     accuracies = cross_val_score(
@@ -297,28 +298,29 @@ def data_and_regression_selector(data, independent_sets, dependent_variable):
     # print(X_train)
     # print(y_train)
     # raise ValueError
-    start_regs = time.perf_counter()
-    linear = linear_regression(X, y)
-    linear_fin = time.perf_counter()
-    print(linear_fin - start_regs)
-    polynomial = polynomial_regression(X, y)
-    poly_fin = time.perf_counter()
-    print(poly_fin - linear_fin)
-    svr = support_vector_regression(X, y)
-    svr_fin = time.perf_counter()
-    print(svr_fin - poly_fin)
-    decision_tree = decision_tree_regression(X, y)
-    dt_fin = time.perf_counter()
-    print(dt_fin - svr_fin)
-    random_forest = random_forest_regression(X, y)
-    print(time.perf_counter() - dt_fin)
-    print(time.perf_counter() - start_regs)
-    raise ValueError
+    # start_regs = time.perf_counter()
+    # linear = linear_regression(X, y)
+    # linear_fin = time.perf_counter()
+    # print(linear_fin - start_regs)
+    # polynomial = polynomial_regression(X, y)
+    # poly_fin = time.perf_counter()
+    # print(poly_fin - linear_fin)
+    # svr = support_vector_regression(X, y)
+    # svr_fin = time.perf_counter()
+    # print(svr_fin - poly_fin)
+    # decision_tree = decision_tree_regression(X, y)
+    # dt_fin = time.perf_counter()
+    # print(dt_fin - svr_fin)
+    # random_forest = random_forest_regression(X, y)
+    # print(time.perf_counter() - dt_fin)
+    # print(time.perf_counter() - start_regs)
+    # raise ValueError
 
-    # cat_start = time.perf_counter()
-    # cat_boost = catboost_regression(X, y)
-    # print(time.perf_counter() - cat_start)
-    # funcs_run = time.perf_counter()
+    cat_start = time.perf_counter()
+    cat_boost = catboost_regression(X, y)
+    print(time.perf_counter() - cat_start)
+    funcs_run = time.perf_counter()
+    raise ValueError
 
     r2_output = [independent_variables, linear[0], polynomial[0],
                  svr[0], decision_tree[0], random_forest[0]]

@@ -1,9 +1,4 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Sep 26 17:12:19 2022
 
-@author: sarma
-"""
 
 # Importing the libraries
 import numpy as np
@@ -24,67 +19,80 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor
 from catboost import CatBoostRegressor
 from xgboost import XGBRegressor
-from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
+from math import sqrt
+
+# 12.5 to do:
+# integrate steps into main function that calls the right regression
+# output as a list that includes: [independent_variable_sets, regression, params, cv_r2_score, r2, adj_r2, mae, mape, mse, rmse]
+# have testing iterated in order from that which had the highest cv_r2_score to the lowest
+# look up what different relationships between scoring differences mean in terms of being better in one score but worse in another
+
+# 12.7 to do:
+# remove ave_target_timeline and method_priority_level from timeline_characteristics? maybe just remove timeline_characteristics altogether?
+# determine water system averages for all the contaminants that are not a VOC/SOC (and have an appreciable number of samples. See: contam_info table)
+# # if that contaminant has never been sampled at the water system, then leave as a blank (imputer will fill with mean)
+# # Put all as a new class, something like 'non_organic_contaminant_averages'. Will have a lot of features obviously.
+# #Bring that in as another independent_variable set in the regression calculations
+# Also figure out what is going on with the 'regulating' ind_var set.
 
 
-def linear_regression(X, y):
+def linear_regression(X, y, params):
     # # # Multiple Linear Regression:
 
     # Splitting the dataset into the Training set and Test set
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=83)
 
-    # Gridsearch Cross-Validation
-    regressor = LinearRegression()
-    parameters = [{'fit_intercept': [True, False]}]
-    grid_search = GridSearchCV(estimator=regressor,
-                               param_grid=parameters,
-                               scoring='r2',
-                               cv=10,
-                               n_jobs=-1)  # n_jobs = -1 means it will use all CPU cores
-    grid_search.fit(X_train, y_train)
-    df_gridsearch = pd.DataFrame(grid_search.cv_results_)
-    df_gridsearch['params'] = df_gridsearch['params'].astype("str")
-    df_gridsearch['regression'] = 'linear'
-    return df_gridsearch
+    # Training the model
+    param_dict = eval(params)
+    regressor = LinearRegression(fit_intercept=param_dict['fit_intercept'])
+    regressor.fit(X_train, y_train)
+
+    # Predicting test set results
+    y_pred = regressor.predict(X_test)
+
+    # Scoring the model
+    r2 = r2_score(y_test, y_pred)  # r-squared
+    adj_r2 = 1-(1-r2)*(len(y)-1)/(len(y)-1-X.shape[1])  # adjusted r-squared
+    mae = mean_absolute_error(y_test, y_pred)  # mean absolute error
+    mape = mae * 100  # mean absolute percentage error
+    mse = mean_squared_error(y_test, y_pred)  # mean squared error
+    rmse = sqrt(mse)  # root mean squared error
+
+    return [r2, adj_r2, mae, mape, mse, rmse]
 
 
-def polynomial_regression(X, y):
+def polynomial_regression(X, y, params):
     # # # Polynomial Regression:
 
     # Splitting the dataset into the Training set and Test set
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=83)
 
-    # Gridsearch Cross-Validation
-    regressor = LinearRegression()
-    degrees = [2]
-    output_data = []
-    for deg in degrees:
-        poly_features = PolynomialFeatures(degree=deg)
-        X_train_poly = poly_features.fit_transform(X_train)
-        regressor = LinearRegression()
-        # parameters = [{'fit_intercept': [True], 'normalize':[
-        #     True, False]}, {'fit_intercept': [False]}]
-        parameters = [{'fit_intercept': [True, False]}]
-        grid_search = GridSearchCV(estimator=regressor,
-                                   param_grid=parameters,
-                                   scoring='r2',
-                                   cv=10,
-                                   n_jobs=-1)  # n_jobs = -1 means it will use all CPU cores
-        grid_search.fit(X_train_poly, y_train)
-        test_gridsearch = pd.DataFrame(grid_search.cv_results_)
-        test_gridsearch['params'] = test_gridsearch['params'].astype("str")
-        test_gridsearch['params'] = test_gridsearch['params'] + \
-            ' + degree=' + str(deg)
-        test_gridsearch['regression'] = 'poly'
-        output_data.append(test_gridsearch)
-    df_gridsearch = pd.concat(output_data)
+    # Training the model
+    poly_features = PolynomialFeatures(degree=2)
+    X_train_poly = poly_features.fit_transform(X_train)
+    param_dict = eval(params[:-11])
+    regressor = LinearRegression(fit_intercept=param_dict['fit_intercept'])
+    regressor.fit(X_train_poly, y_train)
 
-    return df_gridsearch
+    # Predicting test set results
+    y_pred = regressor.predict(poly_features.fit_transform(X_test))
+
+    # Scoring the model
+    r2 = r2_score(y_test, y_pred)  # r-squared
+    adj_r2 = 1-(1-r2)*(len(y)-1)/(len(y)-1-X.shape[1])  # adjusted r-squared
+    mae = mean_absolute_error(y_test, y_pred)  # mean absolute error
+    mape = mae * 100  # mean absolute percentage error
+    mse = mean_squared_error(y_test, y_pred)  # mean squared error
+    rmse = sqrt(mse)  # root mean squared error
+
+    return [r2, adj_r2, mae, mape, mse, rmse]
 
 
-def support_vector_regression(X, y):
+def support_vector_regression(X, y, params):
     # # # SVR:
     y = y.reshape(len(y), 1)
 
@@ -98,129 +106,148 @@ def support_vector_regression(X, y):
     X_train = sc_X.fit_transform(X_train)
     y_train = sc_y.fit_transform(y_train)
 
-    # Gridsearch Cross-Validation
-    regressor = SVR()
-    parameters = [{'kernel': ['linear'], 'C': [0.1, 1, 5]},
-                  {'kernel': ['rbf', 'sigmoid'], 'gamma': [
-                      0.0001, 0.01, 0.1, 1, 5, 10], 'C': [0.1, 1, 5]},
-                  {'kernel': ['poly'], 'gamma': [0.0001, 0.001, 0.01],  'C': [0.1, 1, 5], 'degree': [2, 3]}]
+    # Training the model
+    param_dict = eval(params)
+    if 'degree' in param_dict.keys():
+        regressor = SVR(kernel=param_dict['kernel'],
+                        C=param_dict['C'],
+                        gamma=param_dict['gamma'],
+                        degree=param_dict['degree'])
+    elif 'gamma' in param_dict.keys():
+        regressor = SVR(kernel=param_dict['kernel'],
+                        C=param_dict['C'],
+                        gamma=param_dict['gamma'])
+    else:
+        regressor = SVR(kernel=param_dict['kernel'],
+                        C=param_dict['C'])
+    regressor.fit(X_train, y_train.ravel())
 
-    # {'kernel': ['linear'], 'C': [0.1, 1, 5, 10]} took 17 seconds
-    # # # Keep C at 10 or less since it can take a long time
-    # rbf alone was 15 seconds
-    # sigmoid alone was 13 seconds
-    # rbf, sigmoid was 28 seconds
-    # {'kernel': ['rbf', 'sigmoid'],'gamma': [0.0001, 0.01, 0.1, 1, 5, 10], 'C': [0.1, 1, 5, 10]} took 14 seconds
-    # # # Keep C at 10 or less since it can take a long time
-    # poly with gamma 1 took 294 seconds.
-    # {'kernel': ['poly'], 'gamma': [0.5], 'degree': [2, 3]} took 54 seconds.
-    # parameters = {'kernel': ['poly'], 'gamma': [0.0001, 0.01, 0.1],  'C': [0.1, 1, 5, 10], 'degree': [2, 3]} took 26 seconds
-    grid_search = GridSearchCV(estimator=regressor,
-                               param_grid=parameters,
-                               scoring='r2',
-                               cv=10,
-                               n_jobs=-1)  # n_jobs = -1 means it will use all CPU cores
-    grid_search.fit(X_train, y_train.ravel())
-    df_gridsearch = pd.DataFrame(grid_search.cv_results_)
-    df_gridsearch['params'] = df_gridsearch['params'].astype("str")
-    df_gridsearch['regression'] = 'svr'
-    return df_gridsearch
+    # Predicting test set results
+    y_pred = regressor.predict(X_test)
+
+    # Scoring the model
+    r2 = r2_score(y_test, y_pred)  # r-squared
+    adj_r2 = 1-(1-r2)*(len(y)-1)/(len(y)-1-X.shape[1])  # adjusted r-squared
+    mae = mean_absolute_error(y_test, y_pred)  # mean absolute error
+    mape = mae * 100  # mean absolute percentage error
+    mse = mean_squared_error(y_test, y_pred)  # mean squared error
+    rmse = sqrt(mse)  # root mean squared error
+
+    return [r2, adj_r2, mae, mape, mse, rmse]
 
 
-def decision_tree_regression(X, y):
+def decision_tree_regression(X, y, params):
     # # # Decision Tree:
 
     # Splitting the dataset into the Training set and Test set
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=83)
 
-    # Gridsearch Cross-Validation
-    regressor = DecisionTreeRegressor(random_state=83)
-    parameters = [{'criterion': ['squared_error',
-                                 'friedman_mse', 'absolute_error', 'poisson'], 'max_depth': [3, 5, 10, None]}]
-    grid_search = GridSearchCV(estimator=regressor,
-                               param_grid=parameters,
-                               scoring='r2',
-                               cv=10,
-                               n_jobs=-1)  # n_jobs = -1 means it will use all CPU cores
-    grid_search.fit(X_train, y_train)
-    df_gridsearch = pd.DataFrame(grid_search.cv_results_)
-    df_gridsearch['params'] = df_gridsearch['params'].astype("str")
-    df_gridsearch['regression'] = 'decision_tree'
-    return df_gridsearch
+    # Training the model
+    param_dict = eval(params)
+    regressor = DecisionTreeRegressor(criterion=param_dict['criterion'],
+                                      max_depth=param_dict['max_depth'])
+    regressor.fit(X_train, y_train)
+
+    # Predicting test set results
+    y_pred = regressor.predict(X_test)
+
+    # Scoring the model
+    r2 = r2_score(y_test, y_pred)  # r-squared
+    adj_r2 = 1-(1-r2)*(len(y)-1)/(len(y)-1-X.shape[1])  # adjusted r-squared
+    mae = mean_absolute_error(y_test, y_pred)  # mean absolute error
+    mape = mae * 100  # mean absolute percentage error
+    mse = mean_squared_error(y_test, y_pred)  # mean squared error
+    rmse = sqrt(mse)  # root mean squared error
+
+    return [r2, adj_r2, mae, mape, mse, rmse]
 
 
-def random_forest_regression(X, y):
+def random_forest_regression(X, y, params):
     # # # Random Forest:
+
     # Splitting the dataset into the Training set and Test set
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=83)
 
-    # Gridsearch Cross-Validation
-    regressor = RandomForestRegressor()
-    # parameters = [{'n_estimators': [10, 100, 200], 'criterion': [
-    #     'squared_error', 'poisson']}]
-    parameters = [{'n_estimators': [10, 100, 200], 'criterion': [
-        'squared_error', 'poisson'], 'max_depth': [3, 5, None]}]
-    grid_search = GridSearchCV(estimator=regressor,
-                               param_grid=parameters,
-                               scoring='r2',
-                               cv=10,
-                               n_jobs=-1)  # n_jobs = -1 means it will use all CPU cores
-    grid_search.fit(X_train, y_train)
-    df_gridsearch = pd.DataFrame(grid_search.cv_results_)
-    df_gridsearch['params'] = df_gridsearch['params'].astype("str")
-    df_gridsearch['regression'] = 'random_forest'
-    return df_gridsearch
+    # Training the model
+    param_dict = eval(params)
+    regressor = RandomForestRegressor(n_estimators=param_dict['n_estimators'],
+                                      criterion=param_dict['criterion'],
+                                      max_depth=param_dict['max_depth'])
+    regressor.fit(X_train, y_train)
+
+    # Predicting test set results
+    y_pred = regressor.predict(X_test)
+
+    # Scoring the model
+    r2 = r2_score(y_test, y_pred)  # r-squared
+    adj_r2 = 1-(1-r2)*(len(y)-1)/(len(y)-1-X.shape[1])  # adjusted r-squared
+    mae = mean_absolute_error(y_test, y_pred)  # mean absolute error
+    mape = mae * 100  # mean absolute percentage error
+    mse = mean_squared_error(y_test, y_pred)  # mean squared error
+    rmse = sqrt(mse)  # root mean squared error
+
+    return [r2, adj_r2, mae, mape, mse, rmse]
 
 
-def catboost_regression(X, y):
+def catboost_regression(X, y, params):
     # # # Cat Boost Regression:
 
     # Splitting the dataset into the Training set and Test set
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=83)
 
-    # Gridsearch Cross-Validation
-    regressor = CatBoostRegressor(silent=True)
-    parameters = [{'max_depth': [3, 4, 5],
-                   'n_estimators':[100, 200, 300]}]
-    grid_search = GridSearchCV(estimator=regressor,
-                               param_grid=parameters,
-                               scoring='r2',
-                               cv=10,
-                               n_jobs=-1)  # n_jobs = -1 means it will use all CPU cores
-    grid_search.fit(X_train, y_train)
-    df_gridsearch = pd.DataFrame(grid_search.cv_results_)
-    df_gridsearch['params'] = df_gridsearch['params'].astype("str")
-    df_gridsearch['regression'] = 'catboost'
-    return df_gridsearch
+    # Training the model
+    param_dict = eval(params)
+    regressor = CatBoostRegressor(silent=True, max_depth=param_dict['max_depth'],
+                                  n_estimators=param_dict['n_estimators'])
+    regressor.fit(X_train, y_train)
+
+    # Predicting test set results
+    y_pred = regressor.predict(X_test)
+
+    # Scoring the model
+    r2 = r2_score(y_test, y_pred)  # r-squared
+    adj_r2 = 1-(1-r2)*(len(y)-1)/(len(y)-1-X.shape[1])  # adjusted r-squared
+    mae = mean_absolute_error(y_test, y_pred)  # mean absolute error
+    mape = mae * 100  # mean absolute percentage error
+    mse = mean_squared_error(y_test, y_pred)  # mean squared error
+    rmse = sqrt(mse)  # root mean squared error
+
+    return [r2, adj_r2, mae, mape, mse, rmse]
 
 
-def xgboost_regression(X, y):
+def xgboost_regression(X, y, params):
     # # # XGBoost Regression
 
     # Splitting the dataset into the Training set and Test set
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=83)
 
-    # Gridsearch Cross-Validation
-    regressor = XGBRegressor()
-    parameters = [{'max_depth': [3, 4, 5, 6]}]
-    grid_search = GridSearchCV(estimator=regressor,
-                               param_grid=parameters,
-                               scoring='r2',
-                               cv=10,
-                               n_jobs=-1)  # n_jobs = -1 means it will use all CPU cores
-    grid_search.fit(X_train, y_train)
-    df_gridsearch = pd.DataFrame(grid_search.cv_results_)
-    df_gridsearch['params'] = df_gridsearch['params'].astype("str")
-    df_gridsearch['regression'] = 'xgboost'
-    return df_gridsearch
+    # Training the model
+    param_dict = eval(params)
+    regressor = XGBRegressor(max_depth=param_dict['max_depth'])
+    regressor.fit(X_train, y_train)
+
+    # Predicting test set results
+    y_pred = regressor.predict(X_test)
+
+    # Scoring the model
+    r2 = r2_score(y_test, y_pred)  # r-squared
+    adj_r2 = 1-(1-r2)*(len(y)-1)/(len(y)-1-X.shape[1])  # adjusted r-squared
+    mae = mean_absolute_error(y_test, y_pred)  # mean absolute error
+    mape = mae * 100  # mean absolute percentage error
+    mse = mean_squared_error(y_test, y_pred)  # mean squared error
+    rmse = sqrt(mse)  # root mean squared error
+
+    return [r2, adj_r2, mae, mape, mse, rmse]
 
 
-def data_and_regression_selector(data, independent_sets, dependent_variable):
+def ml_reg_scorer(data, ml_reg_output):
     # start_func = time.perf_counter()
+    independent_sets, dependent_variable, hyperparameters, regression, mean_test_score = ml_reg_output
+
     if len(independent_sets) == 0:
         return [[None]*6, [None]*6]
     ind_variables = []
@@ -268,59 +295,35 @@ def data_and_regression_selector(data, independent_sets, dependent_variable):
     X[:] = imputer.transform(X[:])
 
     independent_variables = ', '.join(independent_sets)
+    try:
+        if regression == 'linear':
+            scores = linear_regression(X, y, hyperparameters)
+        elif regression == 'poly':
+            scores = polynomial_regression(X, y, hyperparameters)
+        elif regression == 'svr':
+            scores = support_vector_regression(X, y, hyperparameters)
+        elif regression == 'decision_tree':
+            scores = decision_tree_regression(X, y, hyperparameters)
+        elif regression == 'random_forest':
+            scores = random_forest_regression(X, y, hyperparameters)
+        elif regression == 'catboost':
+            scores = catboost_regression(X, y, hyperparameters)
+        elif regression == 'xgboost':
+            scores = xgboost_regression(X, y, hyperparameters)
+        else:
+            print(ml_reg_output)
+            print('regression does not exist')
+            raise ValueError
 
-    times = []
-    df_gridsearch_results = []
-    start_regs = time.perf_counter()
-    df_gridsearch_results.append(linear_regression(X, y))
-
-    linear_fin = time.perf_counter()
-    times.append(linear_fin - start_regs)
-    print(f'lin_reg took: {times[-1]}')
-
-    if df_gridsearch_results[0]['mean_test_score'].max() >= 0.5:
-        df_gridsearch_results.append(polynomial_regression(X, y))
-
-        poly_fin = time.perf_counter()
-        times.append(poly_fin - linear_fin)
-        print(f'poly_reg took: {times[-1]}')
-
-        df_gridsearch_results.append(support_vector_regression(X, y))
-
-        svr_fin = time.perf_counter()
-        times.append(svr_fin - poly_fin)
-        print(f'svr_reg took: {times[-1]}')
-
-        df_gridsearch_results.append(decision_tree_regression(X, y))
-
-        dt_fin = time.perf_counter()
-        times.append(dt_fin - svr_fin)
-        print(f'dt_reg took: {times[-1]}')
-
-        df_gridsearch_results.append(random_forest_regression(X, y))
-
-        rf_fin = time.perf_counter()
-        times.append(rf_fin - dt_fin)
-        print(f'rf_reg took: {times[-1]}')
-
-        df_gridsearch_results.append(catboost_regression(X, y))
-        cat_fin = time.perf_counter()
-        times.append(cat_fin - rf_fin)
-        print(f'cat_reg took: {times[-1]}')
-
-        df_gridsearch_results.append(xgboost_regression(X, y))
-        xg_fin = time.perf_counter()
-        times.append(xg_fin - cat_fin)
-        print(f'xg_reg took: {times[-1]}')
-
-    df_all_gridsearch = pd.concat(df_gridsearch_results)
-    df_all_gridsearch['independent_variables'] = independent_variables
-    df_all_gridsearch = df_all_gridsearch[['independent_variables', 'params', 'mean_test_score', 'std_test_score', 'rank_test_score', 'regression',
-                                           'mean_fit_time', 'std_fit_time', 'mean_score_time', 'std_score_time',
-                                           'split0_test_score', 'split1_test_score', 'split2_test_score', 'split3_test_score', 'split4_test_score', 'split5_test_score', 'split6_test_score', 'split7_test_score', 'split8_test_score', 'split9_test_score']]
-    # print(df_all_gridsearch['mean_test_score'].max())
-    print(f'{independent_sets}: {str(times)} ({str(sum(times))} seconds)')
-    return df_all_gridsearch.values.tolist()
+        scoring_output = [independent_variables, dependent_variable,
+                          hyperparameters, regression, mean_test_score]
+        scoring_output.extend(scores)
+        # scoring_output will have:
+        # [independent_variables, dependent_variable, hyperparameters, regression, mean_test_score, r2, adj_r2, mae, mape, mse, rmse]
+        return scoring_output
+    except:
+        print(ml_reg_output)
+        raise ValueError
 
 
 if __name__ == '__main__':
@@ -338,6 +341,8 @@ if __name__ == '__main__':
         "SELECT * from score_and_percentile_ave_ws", conn)
     df_ws_overage = pd.read_sql_query(
         "SELECT * from overage_count_and_percentile_ws", conn)
+    df_ml_reg_gs = pd.read_sql_query(
+        "SELECT * from ml_regressions_gridsearch", conn).sort_values(by='mean_fit_time', ascending=False)  # longest times first
     conn.close()
 
     df_ws_compliance_and_overage = pd.merge(
@@ -480,102 +485,99 @@ if __name__ == '__main__':
 
     dataset = dataset.replace(' ', '_', regex=True)
 
-    # powerset (leaving off 'regulating' for now):
-    from itertools import combinations
-    variable_sets = ['race', 'hh_size', 'bdeg', 'hh_income', 'hh_own', 'rent_as_pct',
-                     'insurance', 'gw_sw', 'timeline_characteristics', 'area', 'population']
-    var_combinations = list()
-    for n in range(len(variable_sets) + 1):
-        var_combinations += list(combinations(variable_sets, n))
-    var_combinations.remove(())
-    print(
-        f'Powerset has {len(var_combinations)} values and took: {time.perf_counter()-start}')
+    # ml_reg_gs_list_catboost = df_ml_reg_gs[[
+    #     'independent_variables', 'dependent_variable', 'params', 'regression', 'mean_test_score']].values.tolist()
 
-    # Start with the heaviest regressions first to find if hyperparameters need to be cut
-    var_combinations = list(reversed(var_combinations))
-    var_comb_sublists = []
-    sublist_size = 60
-    for i in range(0, len(var_combinations), sublist_size):
-        new_var_sublist = var_combinations[i:i+sublist_size]
-        var_comb_sublists.append(new_var_sublist)
+    # (df_wsp_score_census['ave_overage_rate'] != 'PMD')
+    sublist_creation_start = time.perf_counter()
+    ml_reg_gs_list_catboost = []
+    ml_reg_gs_list_no_catboost = []
+    for i, row in df_ml_reg_gs.iterrows():
+        if row['regression'] == 'catboost':
+            ml_reg_gs_list_catboost.append([list(row['independent_variables'].split(
+                ', ')), row['dependent_variable'], row['params'], row['regression'], row['mean_test_score']])
+        else:
+            ml_reg_gs_list_no_catboost.append([list(row['independent_variables'].split(
+                ', ')), row['dependent_variable'], row['params'], row['regression'], row['mean_test_score']])
 
-    for i in var_comb_sublists:
-        print(len(i))
-
-    # ('hh_size', 'bdeg', 'insurance', 'gw_sw', 'timeline_characteristics')
-    # Should have r2 of 0.728174973621484 & adj_r2 of 0.719301468951892
-    # test = data_and_regression_selector(
-    #     dataset, ('hh_size', 'bdeg', 'insurance', 'gw_sw', 'timeline_characteristics'), 'compliance_percentile')
+    # print([['race', 'hh_income', 'hh_own', 'rent_as_pct', 'insurance', 'timeline_characteristics', 'area'],
+    #       'compliance_percentile', "{'fit_intercept': True} + degree=2", 'poly', -267.86256831824164])
+    # print(ml_reg_gs_list_no_catboost[10328])
+    # test_start = time.perf_counter()
+    # test = ml_reg_scorer(
+    #     dataset, ml_reg_gs_list_no_catboost[10328])
+    # test_fin = time.perf_counter()
     # print(test)
+    # print(test_fin - test_start)
     # raise ValueError
 
-    # FOR TESTING
-    # var_combinations = var_combinations[::171]
-    # print('$$$')
-    # print(len(var_combinations))
-    # for i in var_combinations:
-    #     print(i)
+    no_cat_sublists = []
+    cat_sublists = []
+    sublist_size = 100
 
-    # dependent_vars_to_test = [
-    #     'overage_rate', 'overage_percentile', 'compliance_score', 'compliance_percentile']
-    dependent_vars_to_test = [
-        'compliance_score', 'compliance_percentile', 'overage_rate', 'overage_percentile']
-    for dependent in dependent_vars_to_test:
-        sublist_times = []
-        dependent_index = dependent_vars_to_test.index(dependent)
-        for sublist in var_comb_sublists:
+    for nc in range(0, len(ml_reg_gs_list_no_catboost), sublist_size):
+        new_nc_sublist = ml_reg_gs_list_no_catboost[nc:nc+sublist_size]
+        no_cat_sublists.append(new_nc_sublist)
 
-            sublist_index = var_comb_sublists.index(sublist)
-            print(sublist_index)
+    for cat in range(0, len(ml_reg_gs_list_catboost), sublist_size):
+        new_cat_sublist = ml_reg_gs_list_catboost[cat:cat+sublist_size]
+        cat_sublists.append(new_cat_sublist)
 
-            # regression_columns = ['independent_variables', 'params', 'mean_test_score', 'std_test_score', 'rank_test_score', 'regression',
-            #                       'mean_fit_time', 'std_fit_time', 'mean_score_time', 'std_score_time',
-            #                       'split0_test_score', 'split1_test_score', 'split2_test_score', 'split3_test_score', 'split4_test_score', 'split5_test_score', 'split6_test_score', 'split7_test_score', 'split8_test_score', 'split9_test_score']
-            # regression_outputs = []
-            # regression_start = time.perf_counter()
-            # with concurrent.futures.ProcessPoolExecutor() as executor:  # This is to use multiprocessing
-            #     results = executor.map(data_and_regression_selector, [
-            #         dataset]*len(sublist), sublist, [dependent]*len(sublist))
-            #     end_results_creation = time.perf_counter()
-            #     print(
-            #         f'Results creation: {end_results_creation-regression_start}')
-            #     for result in results:
-            #         regression_outputs.extend(result)
-            #         # print(
-            #         #     f'Time: {str(time.perf_counter() - end_results_creation)}, Len of result: {str(len(result))}, Len of output:{str(len(regression_outputs))}')
-            #     print(
-            #         f'Results iteration: {time.perf_counter()-end_results_creation}')
-
-            regression_columns = ['independent_variables', 'params', 'mean_test_score', 'std_test_score', 'rank_test_score', 'regression',
-                                  'mean_fit_time', 'std_fit_time', 'mean_score_time', 'std_score_time',
-                                  'split0_test_score', 'split1_test_score', 'split2_test_score', 'split3_test_score', 'split4_test_score', 'split5_test_score', 'split6_test_score', 'split7_test_score', 'split8_test_score', 'split9_test_score']
-            regression_outputs = []
-            sublist_start = time.perf_counter()
-            for var_combo in sublist:
-                print(f'Trying: {var_combo}')
-                regression_outputs.extend(
-                    data_and_regression_selector(dataset, var_combo, dependent))
-            sublist_times.append(time.perf_counter() - sublist_start)
+    scoring_columns = ['independent_variables', 'dependent_variable', 'params',
+                       'regression', 'mean_test_score', 'r2', 'adj_r2', 'mae', 'mape', 'mse', 'rmse']
+    sublists_creation_finish = time.perf_counter()
+    print(
+        f'Took {sublists_creation_finish - sublist_creation_start} seconds to create sublists.')
+    prev_finish = sublists_creation_finish
+    for sublist in no_cat_sublists:
+        scoring_start = time.perf_counter()
+        scoring_output = []
+        with concurrent.futures.ProcessPoolExecutor() as executor:  # This is to use multiprocessing
+            results = executor.map(
+                ml_reg_scorer, [dataset]*len(sublist), sublist)
+            end_results_creation = time.perf_counter()
             print(
-                f'\n\n\nSublist {sublist_index} finished in (seconds): {time.perf_counter() - sublist_start}')
+                f'Results creation: {end_results_creation-scoring_start}')
+            for result in results:
+                scoring_output.append(result)
             print(
-                f'All sublist times for this dep variable (seconds): {sublist_times}\n\n')
+                f'Results iteration (sublist {no_cat_sublists.index(sublist)}): {time.perf_counter()-end_results_creation}')
+            print(f'Time so far: {time.perf_counter() - start} seconds')
+        df_score = pd.DataFrame(scoring_output,
+                                columns=scoring_columns)
+        append_or_replace = ('replace')*(prev_finish == sublists_creation_finish) + \
+            ('append')*(prev_finish != sublists_creation_finish)
 
-            df_reg = pd.DataFrame(regression_outputs,
-                                  columns=regression_columns)
-            df_reg['dependent_variable'] = dependent
-            append_or_replace = (
-                'replace')*(sublist_index + dependent_index == 0) + ('append')*(sublist_index + dependent_index > 0)
+        conn = wdc.sql_query_conn()
+        df_score.to_sql('ml_regressions_scoring', conn,
+                        if_exists=append_or_replace, index=False)
+        conn.close()
+        prev_finish = scoring_start
 
-            conn = wdc.sql_query_conn()
-            df_reg.to_sql('ml_regressions_gridsearch', conn,
-                          if_exists=append_or_replace, index=False)
-            conn.close()
+    for sublist in cat_sublists:
+        scoring_start = time.perf_counter()
+        scoring_output = []
 
-    wdc.create_index('ml_regressions_gridsearch', independent_variables='ASC')
-    wdc.create_index('ml_regressions_gridsearch', params='ASC')
-    wdc.create_index('ml_regressions_gridsearch', mean_test_score='ASC')
-    wdc.create_index('ml_regressions_gridsearch', regression='ASC')
+        for cat in sublist:
+            scoring_output.append(ml_reg_scorer(dataset, cat))
+        df_score = pd.DataFrame(scoring_output,
+                                columns=scoring_columns)
+        append_or_replace = ('replace')*(prev_finish == sublists_creation_finish) + \
+            ('append')*(prev_finish != sublists_creation_finish)
+
+        conn = wdc.sql_query_conn()
+        df_score.to_sql('ml_regressions_scoring', conn,
+                        if_exists=append_or_replace, index=False)
+        conn.close()
+        print(
+            f'sublist {cat_sublists.index(sublist)} took: {time.perf_counter() - scoring_start} seconds')
+        prev_finish = scoring_start
+
+    wdc.create_index('ml_regressions_scoring', independent_variables='ASC')
+    wdc.create_index('ml_regressions_scoring', dependent_variable='ASC')
+    wdc.create_index('ml_regressions_scoring', params='ASC')
+    wdc.create_index('ml_regressions_scoring', mean_test_score='ASC')
+    wdc.create_index('ml_regressions_scoring', regression='ASC')
 
     finish = time.perf_counter()
     print(f'Seconds: {finish - start}')

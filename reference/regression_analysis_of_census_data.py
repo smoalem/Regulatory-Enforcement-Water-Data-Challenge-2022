@@ -506,8 +506,8 @@ if __name__ == '__main__':
 
     # # ['hh_size', 'bdeg', 'insurance', 'gw_sw', 'timeline_characteristics']
     # # Should have r2 of 0.728174973621484 & adj_r2 of 0.719301468951892
-    test = data_and_regression_selector(dataset, [
-                                        'hh_size', 'bdeg', 'gw_sw', 'timeline_characteristics'], 'compliance_score')
+    test = data_and_regression_selector(dataset, ('race', 'hh_size', 'bdeg', 'hh_income',
+                                        'hh_own', 'timeline_characteristics', 'area', 'population'), 'compliance_score')
     print(test)
     raise ValueError
 

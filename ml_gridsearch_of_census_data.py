@@ -255,11 +255,28 @@ def data_and_regression_selector(data, independent_sets, dependent_variable):
     if 'ave_target_timeline' in ind_var_columns_list:
         ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(), [
                                ind_var_columns_list.index('ave_target_timeline')])], remainder='passthrough')
+        print('before ct')
+        print(X.shape)
         X = np.array(ct.fit_transform(X))
+        print('after ct')
+        print(X.shape)
+        'end'
     if 'regulating' in ind_var_columns_list:
         ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(), [
                                ind_var_columns_list.index('regulating')])], remainder='passthrough')
+        print([ind_var_columns_list.index('regulating')])
+        print('before ct')
+        print(X)
+        # print(type(X[0]))
+        # print(len(X))
+        # print(X.shape)
         X = np.array(ct.fit_transform(X))
+        print('after ct')
+        print(X)
+        # print(type(X[0]))
+        # print(len(X))
+        # print(X.shape)
+        # 'end'
 
     # Taking care of missing data
     imputer = SimpleImputer(missing_values=np.nan, strategy='mean')
@@ -504,20 +521,11 @@ if __name__ == '__main__':
 
     # ('hh_size', 'bdeg', 'insurance', 'gw_sw', 'timeline_characteristics')
     # Should have r2 of 0.728174973621484 & adj_r2 of 0.719301468951892
-    # test = data_and_regression_selector(
-    #     dataset, ('hh_size', 'bdeg', 'insurance', 'gw_sw', 'timeline_characteristics'), 'compliance_percentile')
-    # print(test)
-    # raise ValueError
+    test = data_and_regression_selector(
+        dataset, ('gw_sw', 'regulating'), 'compliance_score')
+    print(test)
+    raise ValueError
 
-    # FOR TESTING
-    # var_combinations = var_combinations[::171]
-    # print('$$$')
-    # print(len(var_combinations))
-    # for i in var_combinations:
-    #     print(i)
-
-    # dependent_vars_to_test = [
-    #     'overage_rate', 'overage_percentile', 'compliance_score', 'compliance_percentile']
     dependent_vars_to_test = [
         'compliance_score', 'compliance_percentile', 'overage_rate', 'overage_percentile']
     for dependent in dependent_vars_to_test:

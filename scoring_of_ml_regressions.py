@@ -485,10 +485,6 @@ if __name__ == '__main__':
 
     dataset = dataset.replace(' ', '_', regex=True)
 
-    # ml_reg_gs_list_catboost = df_ml_reg_gs[[
-    #     'independent_variables', 'dependent_variable', 'params', 'regression', 'mean_test_score']].values.tolist()
-
-    # (df_wsp_score_census['ave_overage_rate'] != 'PMD')
     sublist_creation_start = time.perf_counter()
     ml_reg_gs_list_catboost = []
     ml_reg_gs_list_no_catboost = []

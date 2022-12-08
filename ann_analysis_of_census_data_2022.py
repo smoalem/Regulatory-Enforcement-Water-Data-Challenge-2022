@@ -1,4 +1,4 @@
-import tensorflow as tf
+import tensorflow as tf 
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -22,9 +22,11 @@ from sklearn.metrics import r2_score
 import concurrent.futures
 from numba import jit
 import pandas as pd
+from functools import partial
+import keras_tuner as kt
+import random
 
 # build ANN by Friday
-
 # two approaches:
 # use ideal variables seen in wdc - regressions - random forest results
 # use dimensionality reduction - feed in all variables
@@ -87,39 +89,50 @@ from sklearn.metrics import mean_absolute_percentage_error
 # Defining a function to find the best parameters for ANN
 
 
+
 @jit(forceobj=True, parallel=True)
 def FunctionFindBestParams(X_train, y_train, X_test, y_test):
 
     # Defining the list of hyper parameters to try
-    batch_size_list = [1, 5, 10, 15, 20, 32]
-    epoch_list = [10, 20, 30, 40, 50, 100]
-    units_list = [ 6, 8, 12, 24, 48, 83, 125, 166 ]
-    hidden_layer_list = [1,2,3]
-    activation_function_dict = {"relu": "relu", "leaky relu": tf.keras.layers.LeakyReLU(alpha=0.01), "relu6": tf.nn.relu6 }
-    activation_function_name_list = ["relu", "leaky relu", "relu6"]
+    epoch_list = [i for i in range(101)]
+    units_list = [i for i in range(68, 200)]
+    hidden_layer_list = [i for i in range(2, 201)]
+    activation_function_name_list = ["relu", "relu6", "elu", "selu", "swish"]
+    activation_function_name_list_mix = [(a, b) for a in activation_function_name_list for b in activation_function_name_list]
+    activation_function_name_list_mix_clean = [*set(activation_function_name_list_mix)]
+    # print(activation_function_name_list_mix_clean)
+    combination_list_single_hidden = [(e,u,1,(a,"N/A")) for e in epoch_list for u in units_list for a in activation_function_name_list]
+    combination_list_multi_hidden = [(e,u,h,a) for e in epoch_list for u in units_list for h in hidden_layer_list for a in activation_function_name_list_mix_clean]
+    print(combination_list_single_hidden)
+    print(combination_list_multi_hidden)
+    print(len(combination_list_single_hidden))
+    print(len(combination_list_multi_hidden))
 
+    raise ValueError
 
-    combination_list = [(b,e,u,h,a) for b in batch_size_list for e in epoch_list for u in units_list for h in hidden_layer_list for a in activation_function_name_list]
-    print(len(combination_list))
-
+    combination_list = combination_list_single_hidden + combination_list_multi_hidden
     SearchResultsData = pd.DataFrame(
-        columns=['trial_number', 'batch_size', 'epoch', 'hidden_layer', 'units', 'activation_function', 'accuracy', 'r2', 'adj_r2'])
+        columns=['trial_number', 'epoch', 'hidden_layers', 'units', 'activation_function', 'accuracy', 'r2', 'adj_r2'])
 
     # initializing the trials
+    print(len(combination_list))
     TrialNumber = 0
-    for combo in combination_list:
-        batch_size_trial = combo[0]
-        epochs_trial = combo[1]
-        units_trial = combo[2]
-        hidden_trial = combo[3]
-        activation_trial = combo[4]
+    for combo in combination_list: 
         TrialNumber += 1
+        epochs_trial = combo[0]
+        units_trial = combo[1]
+        hidden_trial = combo[2] 
+        activation_trial_initial = combo[3][0]
+        activation_trial_body = combo[3][1]
+        
         # create ANN model
         model = tf.keras.models.Sequential()
         # Defining the first layer of the model
-        for _ in range(hidden_trial):
-            model.add(tf.keras.layers.Dense(
-                units=units_trial, activation= activation_function_dict[activation_trial]))
+        model.add(tf.keras.layers.Dense(units= units_trial, input_dim = 68, activation=activation_trial_initial))
+        if hidden_trial > 1:
+            for _ in range(hidden_trial - 1):
+                model.add(tf.keras.layers.Dense(
+                    units=units_trial, activation= activation_trial_body))
 
     
 
@@ -131,7 +144,7 @@ def FunctionFindBestParams(X_train, y_train, X_test, y_test):
         model.compile(loss='mean_squared_error', optimizer='adam')
 
         # Fitting the ANN to the Training set
-        model.fit(X_train, y_train, batch_size=batch_size_trial,
+        model.fit(X_train, y_train, batch_size=1,
                 epochs=epochs_trial, verbose=0)
         y_pred = model.predict(X_test)
         MAPE = mean_absolute_percentage_error(y_test, model.predict(X_test))
@@ -141,12 +154,13 @@ def FunctionFindBestParams(X_train, y_train, X_test, y_test):
         adj_r2 = 1-(1-r2)*(len(y)-1)/(len(y)-1-X.shape[1])
         
         # printing the results of the current iteration
-        print(TrialNumber, 'Parameters:', 'batch_size:', batch_size_trial,
-            '-', 'epochs:', epochs_trial, 'hidden layers: ', hidden_trial, 'activation function: ', activation_trial, 'hidden layers: ', hidden_trial, 'Accuracy:', 100 - MAPE_100, "R2/Adj R2: ", str(r2) + ' / ' + str(adj_r2))
-        load = {'trial_number': [TrialNumber], 'batch_size':  [batch_size_trial], 'epoch': [epochs_trial], 'hidden layers': [hidden_trial], 'units': [units_trial], 'activation_function': [activation_trial],  'accuracy': [100-MAPE_100], "r2" : [r2],  'adj_r2' : [adj_r2]}
+        print("Trial Number: ", TrialNumber, 
+            ' / ', 'epochs:', epochs_trial,' / ', 'hidden layers: ', hidden_trial,' / ', 'units: ', units_trial, ' / ', 'activation function initial: ', activation_trial_initial, ' / ','activation function body: ', activation_trial_body,' / ', 'Accuracy:', 100 - MAPE_100,' / ', "R2/Adj R2: ", str(r2) + ' / ' + str(adj_r2))
+        load = {'trial_number': [TrialNumber], 'epoch': [epochs_trial], 'hidden_layers': [hidden_trial], 'units': [units_trial], 'activation_function': [combo[3]],  'accuracy': [100-MAPE_100], "r2" : [r2],  'adj_r2' : [adj_r2]}
         load_df = pd.DataFrame.from_dict(load)
         SearchResultsData = pd.concat([SearchResultsData, load_df])
 
+        # print(SearchResultsData)
     return SearchResultsData 
 
 
@@ -426,43 +440,90 @@ if __name__ == '__main__':
 
     # Splitting the dataset into the Training set and Test set
     r2_list = []
-    for i in range(100):
-        print(f"Loop {i}")
-        from sklearn.model_selection import train_test_split
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=83)
+    # for i in range(100):
+        # print(f"Loop {i}")
+    from sklearn.model_selection import train_test_split
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42)
 
-        # Feature Scaling
-        from sklearn.preprocessing import StandardScaler
-        sc = StandardScaler()
-        X_train = sc.fit_transform(X_train)
-        X_test = sc.transform(X_test)
+    # Feature Scaling
+    from sklearn.preprocessing import StandardScaler
+    sc = StandardScaler()
+    X_train = sc.fit_transform(X_train)
+    X_test = sc.transform(X_test)
+    # FunctionFindBestParams(X_train, y_train, X_test, y_test)
 
-        # # This is just to test that the data was organized correctly
-        # # ['hh_size', 'bdeg', 'insurance', 'gw_sw', 'timeline_characteristics']
-        # # Should have r2 of 0.728174973621484 & adj_r2 of 0.719301468951892
-        # print(random_forest_regression(X, y))
-        # raise ValueError
+    # # This is just to test that the data was organized correctly
+    # # ['hh_size', 'bdeg', 'insurance', 'gw_sw', 'timeline_characteristics']
+    # # Should have r2 of 0.728174973621484 & adj_r2 of 0.719301468951892
+    # print(random_forest_regression(X, y))
+    # raise ValueError
+    msle = tf.keras.losses.MeanSquaredLogarithmicError()
+    # Initializing the ANN
+    # print(FunctionFindBestParams(X_train, y_train, X_test, y_test))
+    # table_best_params = FunctionFindBestParams(X_train, y_train, X_test, y_test)
+    # table_best_params.to_csv("best_params_search.csv")
+    # ann = tf.keras.models.Sequential()
+    # number_of_layers = 200
+    # randomize_unit_list = [random.randrange(100, 200, 1) for _ in range(number_of_layers)]
+    # randomized_activation_list = [random.randrange(0, 5, 1) for _ in range(number_of_layers)]
+    # activation_list = ["selu", "relu", "relu6", "elu", "swish"]
+    # ann.add(tf.keras.layers.Dense(units= randomize_unit_list[0], 
+    # input_dim = 68, 
+    # activation = activation_list[randomized_activation_list[0]]))
+    # for i in range(1, number_of_layers):
+    #     ann.add(tf.keras.layers.Dense(units= randomize_unit_list[i],  activation = activation_list[randomized_activation_list[i]]))
 
-        # Initializing the ANN
-        # table_best_params = FunctionFindBestParams(X_train, y_train, X_test, y_test)
-        # table_best_params.to_csv("best_params_search.csv")
-        ann = tf.keras.models.Sequential()
-        ann.add(tf.keras.layers.Dense(units= 166, activation=tf.nn.relu6))
-        ann.add(tf.keras.layers.Dense(units= 166, activation=tf.nn.relu6))
+    ann = tf.keras.models.Sequential()
+
+
+    ann.add(tf.keras.layers.Dense(units= 501, input_dim=68, activation="swish"))
+    ann.add(tf.keras.layers.Dense(units= 509, activation="relu6"))
+    ann.add(tf.keras.layers.Dense(units= 130,  activation="selu"))
+    ann.add(tf.keras.layers.Dense(units= 311,  activation="relu"))
+    ann.add(tf.keras.layers.Dense(units= 266,  activation="swish"))
+
+
+
+
+
+
+    # # # Adding the output layer
+    ann.add(tf.keras.layers.Dense(units=1))
+
+    # # # Part 3 - Training the ANN
+    
+    # # # Using Hyperband and HP fit
+    # model_builder = 
+    # tuner = kt.Hyperband(model_builder,
+    #                     objective='val_accuracy',
+    #                     max_epochs=10,
+    #                     factor=3)
+    # stop_early = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5)
+    # tuner.search(img_train, label_train, epochs=50, validation_split=0.2, callbacks=[stop_early])
+    # best_hps=tuner.get_best_hyperparameters(num_trials=1)[0]
+    # model = tuner.hypermodel.build(best_hps)
+    # history = model.fit(img_train, label_train, epochs=50, validation_split=0.2)
+
+    # val_acc_per_epoch = history.history['val_accuracy']
+    # best_epoch = val_acc_per_epoch.index(max(val_acc_per_epoch)) + 1
+    # print('Best epoch: %d' % (best_epoch,))
+
+    # hypermodel = tuner.hypermodel.build(best_hps)
+
+    # Retrain the model
+    # hypermodel.fit(img_train, label_train, epochs=best_epoch, validation_split=0.2)
+    # eval_result = hypermodel.evaluate(img_test, label_test)
+    # print("[test loss, test accuracy]:", eval_result)
+
+
+    # # # Compiling the ANN
+    ann.compile(optimizer='adam', loss="mean_squared_error")
+
+    # # # Training the ANN on the Training set
+    ann.fit(X_train, y_train, batch_size=1, epochs=5)
 
     
-        # # Adding the output layer
-        ann.add(tf.keras.layers.Dense(units=1))
-
-        # # Part 3 - Training the ANN
-
-        # # Compiling the ANN
-        ann.compile(optimizer='adam', loss='mean_squared_error')
-        # ann.compile(optimizer='adam', loss='mean_squared_error')
-
-        # # Training the ANN on the Training set
-        ann.fit(X_train, y_train, batch_size=1, epochs=100, verbose=0)
 
 
     # 128 hidden layer x 3 
@@ -474,24 +535,25 @@ if __name__ == '__main__':
 
     # 123 Parameters: batch_size: 1 - epochs: 20 hidden layers:  2 activation function:  relu6 Accuracy: 76.47456847560395 R2/Adj R2:  0.6075984947424813 / 0.5773109778781098
 
-        # Predicting the Test set results
-        y_pred = ann.predict(X_test)
-        # np.set_printoptions(precision=2)
-        # print(np.concatenate((y_pred.reshape(len(y_pred), 1),
-        #       y_test.reshape(len(y_test), 1)), 1))
-        # print('keras.metrics.Accuracy function')
-        # metric = tf.keras.metrics.Accuracy()
-        # metric.update_state(y_test, y_pred)
-        # print(metric.result().numpy())
-        # print('MAPE:')
-        from sklearn.metrics import mean_absolute_percentage_error
-        # MAPE = mean_absolute_percentage_error(y_test, ann.predict(X_test))
-        # print(MAPE)
-        print('normal r2/adj_r2')
+    # Predicting the Test set results
+    y_pred = ann.predict(X_test)
+    np.set_printoptions(precision=2)
+    print(np.concatenate((y_pred.reshape(len(y_pred), 1),
+          y_test.reshape(len(y_test), 1)), 1))
+    print('keras.metrics.Accuracy function')
+    metric = tf.keras.metrics.Accuracy()
+    metric.update_state(y_test, y_pred)
+    print(metric.result().numpy())
+    print('MAPE:')
+    from sklearn.metrics import mean_absolute_percentage_error
+    MAPE = mean_absolute_percentage_error(y_test, ann.predict(X_test))
+    print(MAPE)
+    print('normal r2/adj_r2')
 
-        r2 = r2_score(y_test, y_pred)
-        adj_r2 = 1-(1-r2)*(len(y)-1)/(len(y)-1-X.shape[1])
-        r2_list.append((r2, adj_r2))
+    r2 = r2_score(y_test, y_pred)
+    adj_r2 = 1-(1-r2)*(len(y)-1)/(len(y)-1-X.shape[1])
+    print(f"r2 / adj r2: {r2} / {adj_r2}")
+    r2_list.append((r2, adj_r2))
 
     print(r2_list)
 
@@ -500,9 +562,9 @@ if __name__ == '__main__':
 
     finish = time.perf_counter()
     print(f'Seconds: {finish - start}')
-    # pr.disable()
-    # s = io.StringIO()
-    # sortby = SortKey.CUMULATIVE
-    # ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-    # ps.print_stats()
-    # print(s.getvalue())
+    pr.disable()
+    s = io.StringIO()
+    sortby = SortKey.CUMULATIVE
+    ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+    ps.print_stats()
+    print(s.getvalue())

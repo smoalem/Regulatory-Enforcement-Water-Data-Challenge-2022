@@ -36,9 +36,9 @@ def sql_query_conn(dbname='', basepath=''):
             repo_head_name = Repository(
                 'C:/Users/hoonje92/Documents/GitHub/Regulatory-Enforcement-Water-Data-Challenge-2022').head.name
             if repo_head_name == 'refs/heads/Development':
-                db_path = r'C:\Users\hoonje92\Documents\GitHub/Regulatory-Enforcement-Water-Data-Challenge-2022\wdc_2022_test.db'
+                db_path = r'C:\Users\hoonje92\Dropbox\Water Data Challenge 2022\wdc_2022_test.db'
             elif repo_head_name == 'refs/heads/main':
-                db_path = r'C:\Users\hoonje92\Documents\GitHub/Regulatory-Enforcement-Water-Data-Challenge-2022\wdc_2022_active.db'
+                db_path = r'C:\Users\hoonje92\Dropbox\Water Data Challenge 2022\wdc_2022_active.db'
             else:
                 print('New branch must be registered')
                 raise OSError

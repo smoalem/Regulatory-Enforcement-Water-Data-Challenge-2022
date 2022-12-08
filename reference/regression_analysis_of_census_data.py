@@ -45,7 +45,8 @@ def catboost_regression(X, y):
         X, y, test_size=0.2, random_state=83)
 
     # Training CatBoost on the Training set
-    regressor = CatBoostRegressor()
+    regressor = CatBoostRegressor(task_type="GPU",
+                           devices='0')
     regressor.fit(X_train, y_train)
 
     accuracies = cross_val_score(

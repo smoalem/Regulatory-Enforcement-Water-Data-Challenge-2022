@@ -39,9 +39,15 @@ def census_tracts_geojson(api_key, c):
     # NECESSARY CONVERSIONS
     # You only need to do this once to produce the geojson file in the proper format. Comment out afterwards
     # SABL to geojson
+
+
+    # filepath to folder with SABL shape file for Jae
+    os.chdir(r'C:\Users\hoonje92\Dropbox\Water Data Challenge 2022\GIS\public_water_systems')
     # filepath to folder with SABL shape file for Sarmad
-    os.chdir(
-        r'C:\Users\sarma\Dropbox\Water Data Challenge 2022\GIS\public_water_systems')
+    # os.chdir(
+    #     r'C:\Users\sarma\Dropbox\Water Data Challenge 2022\GIS\public_water_systems')
+
+
     sfile = gpd.read_file("SABL_Public_220615.shp")
     sfile.to_file("SABL.json", driver="GeoJSON")
     # Note: I had to manually add the ogr2ogr script to my Library folder in my environment.
@@ -86,7 +92,8 @@ if __name__ == '__main__':
     pr = cProfile.Profile()
     pr.enable()
     start = time.perf_counter()
-    api_key = 'ad3130119c535c4902b79422cdacefe1bd3a7190'  # API key for Sarmad
+    # api_key = 'ad3130119c535c4902b79422cdacefe1bd3a7190'  # API key for Sarmad
+    api_key = 'b7494a4c81f71cea60234908731d6a2283854752' # API key for Jae
     c = Census(api_key, year=2020)
     my_shape_geojson = census_tracts_geojson(api_key, c)
     # my_shape_geojson is a dictionary with dict_keys(['type', 'name', 'crs', 'features'])

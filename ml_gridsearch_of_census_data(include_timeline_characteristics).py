@@ -18,7 +18,6 @@ from sklearn.ensemble import RandomForestRegressor
 from catboost import CatBoostRegressor
 from xgboost import XGBRegressor
 from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
-from itertools import combinations
 
 def linear_regression(X, y):
     # # # Multiple Linear Regression:
@@ -221,13 +220,8 @@ def xgboost_regression(X, y):
     return df_gridsearch
 
 
-def data_and_regression_selector(data, independent_sets, dependent_variable, ws_mean_headers):
+def data_and_regression_selector(data, independent_sets, dependent_variable):
     # start_func = time.perf_counter()
-    # print(independent_sets)
-    # print(type(independent_sets))
-    # if type(independent_sets) == tuple:
-    #     independent_sets = list(independent_sets)
-    # print(independent_sets)
     if len(independent_sets) == 0:
         return [[None]*6, [None]*6]
     ind_variables = []
@@ -239,28 +233,18 @@ def data_and_regression_selector(data, independent_sets, dependent_variable, ws_
                     'rent_as_pct': ['fract_rent_lt_10pct', 'fract_rent_10_14.9pct', 'fract_rent_15_19.9pct', 'fract_rent_20_24.9pct', 'fract_rent_25_29.9pct', 'fract_rent_30_34.9pct', 'fract_rent_35_39.9pct', 'fract_rent_40_49.9pct', 'fract_rent_gt_50pct', 'fract_rent_not_computed'],
                     'insurance': ['fract_have_insurance', 'fract_no_insurance'],
                     'gw_sw': ['num_gw', 'num_sw'],
-                    # 'timeline_characteristics': ['ave_target_timeline', 'ave_method_priority_level', 'ave_num_time_segments', 'ave_num_track_switches'],
+                    'timeline_characteristics': ['ave_target_timeline', 'ave_method_priority_level', 'ave_num_time_segments', 'ave_num_track_switches'],
                     'regulating': ['regulating'],
                     'area': ['arealand', 'areawater'],
-                    'population': ['population'],
-                    'ws_contam_means': ws_mean_headers
+                    'population': ['population']}
 
-    }
-
-    # if independent_sets == 'all':
-    #     independent_sets = list(ind_set_dict.keys())
-    if type(independent_sets) == tuple:
-        for ind in independent_sets:
-            ind_variables.extend(ind_set_dict[ind])
-        independent_variables = ', '.join(independent_sets)
-
-    else:
-        ind_variables.extend(ind_set_dict[independent_sets])
-        independent_variables = independent_sets
-
+    if independent_sets == 'all':
+        independent_sets = list(ind_set_dict.keys())
+    for ind in independent_sets:
+        ind_variables.extend(ind_set_dict[ind])
     filtered_data = data[ind_variables]
     X = filtered_data.iloc[:, :].values
-    
+
     dep_var_dict = {'compliance_score': -4, 'compliance_percentile': -
                     3, 'overage_rate': -2, 'overage_percentile': -1}
     y = data.iloc[:, dep_var_dict[dependent_variable]].values
@@ -270,26 +254,32 @@ def data_and_regression_selector(data, independent_sets, dependent_variable, ws_
     # Encoding categorical data
 
 
-    # if 'ave_target_timeline' in ind_var_columns_list:
-    #     ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(sparse=False), [
-    #                            ind_var_columns_list.index('ave_target_timeline')])], remainder='passthrough')
-    #     X = np.array(ct.fit_transform(X))
-
+    if 'ave_target_timeline' in ind_var_columns_list:
+        ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(sparse=False), [
+                               ind_var_columns_list.index('ave_target_timeline')])], remainder='passthrough')
+        # ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(), [60])], remainder='passthrough')
+        # print(X)
+        # print(X[0])
+        # print(X[1])
+        X = np.array(ct.fit_transform(X))
+        # print(X)
+        # print(X[0])
+        # print(X[1])
 
     if 'regulating' in ind_var_columns_list:
         ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(sparse=False), [ind_var_columns_list.index('regulating')])], remainder='passthrough')
         # ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(), [2])], remainder='passthrough')
         X = np.array(ct.fit_transform(X))
   
+    # raise ValueError
     # Taking care of missing data
-    print(X.shape)
-    print(filtered_data.columns.to_list())
     imputer = SimpleImputer(missing_values=np.nan, strategy='mean')
     imputer.fit(X[:])
     # Transform method then does the replacement of all the nan with mean
     X[:] = imputer.transform(X[:])
-    
- 
+
+    independent_variables = ', '.join(independent_sets)
+
     times = []
     df_gridsearch_results = []
     start_regs = time.perf_counter()
@@ -360,43 +350,23 @@ if __name__ == '__main__':
         "SELECT * from score_and_percentile_ave_ws", conn)
     df_ws_overage = pd.read_sql_query(
         "SELECT * from overage_count_and_percentile_ws", conn)
-    df_ws_contam_mean = pd.read_sql_query(
-        "SELECT * from water_system_contam_mean", conn)
     conn.close()
 
     df_ws_compliance_and_overage = pd.merge(
         df_ws_compliance, df_ws_overage, left_on='ws_id', right_on='ws_id', how='left')
-    df_ws_compliance_overage_and_contam_mean = pd.merge(
-        df_ws_compliance_and_overage, df_ws_contam_mean, left_on='ws_id', right_on='ws_id', how='left')
     df_wsp_and_scores = pd.merge(
-        df_ws_compliance_overage_and_contam_mean, df_wsp, left_on='ws_id', right_on='id', how='left')
+        df_ws_compliance_and_overage, df_wsp, left_on='ws_id', right_on='id', how='left')
     df_wsp_score_census = pd.merge(
         df_census, df_wsp_and_scores, left_on='sabl_pwsid', right_on='water_system_number', how='left')
-
     df_wsp_score_census = df_wsp_score_census[(df_wsp_score_census['ave_red_lean_score'] != 'PMD') & (
         df_wsp_score_census['ave_red_lean_score'] != 'TBD') & (df_wsp_score_census['ave_red_lean_score'] != 'NA')]
+
     df_wsp_score_census = df_wsp_score_census[(df_wsp_score_census['ave_overage_rate'] != 'PMD') & (
         df_wsp_score_census['ave_overage_rate'] != 'TBD') & (df_wsp_score_census['ave_overage_rate'] != 'NA')]
 
     df_wsp_score_census.drop(['n_100pct_pov_lvl', 'n_101_149pct_pov_lvl', 'n_150pct_pov_lvl', 'id',
                              'pserved', 'type', 'primary_source_water_type', 'ur', 'water_sy_1', 'pop100'], axis=1, inplace=True)
-    # df_wsp_score_census = df_wsp_score_census[['n_race', 'n_white_alone', 'n_black_alone', 'n_ai_and_an_alone', 'n_asian_alone', 'n_nh_and_opi_alone', 'n_other_alone', 'n_two_or_more_races',
-    #                                            'hh_size', 'hh_1worker', 'hh_2worker', 'hh_3+worker', 'n_hh_3ppl', 'n_hh_4+ppl',
-    #                                           'n_hh_type', 'n_hh_type_fam', 'n_hh_type_fam_mcf', 'n_hh_type_fam_mcf_1unit', 'n_hh_type_fam_mcf_2unit', 'n_hh_type_fam_mcf_mh_and_other', 'n_hh_type_fam_other', 'n_hh_type_fam_other_mhh_nsp', 'n_hh_type_fam_other_mhh_nsp_1unit', 'n_hh_type_fam_other_mhh_nsp_2unit', 'n_hh_type_fam_other_mhh_nsp_mh_and_other', 'n_hh_type_fam_other_fhh_nsp', 'n_hh_type_fam_other_fhh_nsp_1unit', 'n_hh_type_fam_other_fhh_nsp_2unit', 'n_hh_type_fam_other_fhh_nsp_mh_and_other', 'n_hh_type_nonfam', 'n_hh_type_nonfam_1unit', 'n_hh_type_nonfam_2unit', 'n_hh_type_nonfam_mh_and_other',
-    #                                            'n_bachelors_deg', 'n_seng_compt_mat_stat_deg', 'n_seng_bio_ag_env_deg', 'n_seng_phys_sci_deg', 'n_seng_psych_deg', 'n_seng_soc_sci_deg', 'n_seng_eng_deg', 'n_seng_mds_deg', 'n_seng_rltd_deg', 'n_bus_deg', 'n_edu_deg', 'n_aho_lit_lang_deg', 'n_aho_lib_arts_and_hist_deg', 'n_aho_vis_perf_art_deg', 'n_aho_comm_deg', 'n_aho_other_deg',
-    #                                            'n_hh_income', 'n_hh_income_lt_10k', 'n_hh_income_10k_15k', 'n_hh_income_15k_20k', 'n_hh_income_20k_25k', 'n_hh_income_25k_30k', 'n_hh_income_30k_35k', 'n_hh_income_35k_40k', 'n_hh_income_40k_45k', 'n_hh_income_45k_50k', 'n_hh_income_50k_60k', 'n_hh_income_60k_75k', 'n_hh_income_75k_100k', 'n_hh_income_100k_125k', 'n_hh_income_125k_150k', 'n_hh_income_150k_200k', 'n_hh_income_gt_200k',
-    #                                            'n_hh_housing_units', 'n_hh_own', 'n_hh_rent',
-    #                                            'n_rent_as_pct', 'n_rent_lt_10pct', 'n_rent_10_14.9pct', 'n_rent_15_19.9pct', 'n_rent_20_24.9pct', 'n_rent_25_29.9pct', 'n_rent_30_34.9pct', 'n_rent_35_39.9pct', 'n_rent_40_49.9pct', 'n_rent_gt_50pct', 'n_rent_not_computed',
-    #                                            'n_insurance', 'n_have_insurance', 'n_no_insurance',
-    #                                            'number_gw', 'number_sw',
-    #                                            'ave_target_timeline', 'ave_method_priority_level', 'ave_num_time_segments', 'ave_num_track_switches',
-    #                                            'regulating',
-    #                                            'arealand', 'areawater',
-    #                                            'population',
-    #                                            'basename', 'centlat', 'centlon', 'funcstat', 'geoid', 'geo_id', 'hu100', 'intptlat', 'intptlon', 'lsadc', 'mtfcc', 'name', 'objectid', 'oid', 'sabl_pwsid', 'state_clas', 'county', 'proportion', 'state', 'tract', 'water_system_number',
-    #                                            'water_system_name', 'ws_id', 'water_system_number', 'water_system_name', 'ave_red_lean_score', 'ave_score_red_lean_percentile', 'ave_overage_rate', 'overage_percentile']]
-    ws_mean_headers = df_ws_contam_mean.columns.to_list()[1:]
-    df_wsp_score_census_columns = ['n_race', 'n_white_alone', 'n_black_alone', 'n_ai_and_an_alone', 'n_asian_alone', 'n_nh_and_opi_alone', 'n_other_alone', 'n_two_or_more_races',
+    df_wsp_score_census = df_wsp_score_census[['n_race', 'n_white_alone', 'n_black_alone', 'n_ai_and_an_alone', 'n_asian_alone', 'n_nh_and_opi_alone', 'n_other_alone', 'n_two_or_more_races',
                                                'hh_size', 'hh_1worker', 'hh_2worker', 'hh_3+worker', 'n_hh_3ppl', 'n_hh_4+ppl',
                                               'n_hh_type', 'n_hh_type_fam', 'n_hh_type_fam_mcf', 'n_hh_type_fam_mcf_1unit', 'n_hh_type_fam_mcf_2unit', 'n_hh_type_fam_mcf_mh_and_other', 'n_hh_type_fam_other', 'n_hh_type_fam_other_mhh_nsp', 'n_hh_type_fam_other_mhh_nsp_1unit', 'n_hh_type_fam_other_mhh_nsp_2unit', 'n_hh_type_fam_other_mhh_nsp_mh_and_other', 'n_hh_type_fam_other_fhh_nsp', 'n_hh_type_fam_other_fhh_nsp_1unit', 'n_hh_type_fam_other_fhh_nsp_2unit', 'n_hh_type_fam_other_fhh_nsp_mh_and_other', 'n_hh_type_nonfam', 'n_hh_type_nonfam_1unit', 'n_hh_type_nonfam_2unit', 'n_hh_type_nonfam_mh_and_other',
                                                'n_bachelors_deg', 'n_seng_compt_mat_stat_deg', 'n_seng_bio_ag_env_deg', 'n_seng_phys_sci_deg', 'n_seng_psych_deg', 'n_seng_soc_sci_deg', 'n_seng_eng_deg', 'n_seng_mds_deg', 'n_seng_rltd_deg', 'n_bus_deg', 'n_edu_deg', 'n_aho_lit_lang_deg', 'n_aho_lib_arts_and_hist_deg', 'n_aho_vis_perf_art_deg', 'n_aho_comm_deg', 'n_aho_other_deg',
@@ -405,31 +375,14 @@ if __name__ == '__main__':
                                                'n_rent_as_pct', 'n_rent_lt_10pct', 'n_rent_10_14.9pct', 'n_rent_15_19.9pct', 'n_rent_20_24.9pct', 'n_rent_25_29.9pct', 'n_rent_30_34.9pct', 'n_rent_35_39.9pct', 'n_rent_40_49.9pct', 'n_rent_gt_50pct', 'n_rent_not_computed',
                                                'n_insurance', 'n_have_insurance', 'n_no_insurance',
                                                'number_gw', 'number_sw',
+                                               'ave_target_timeline', 'ave_method_priority_level', 'ave_num_time_segments', 'ave_num_track_switches',
                                                'regulating',
                                                'arealand', 'areawater',
                                                'population',
                                                'basename', 'centlat', 'centlon', 'funcstat', 'geoid', 'geo_id', 'hu100', 'intptlat', 'intptlon', 'lsadc', 'mtfcc', 'name', 'objectid', 'oid', 'sabl_pwsid', 'state_clas', 'county', 'proportion', 'state', 'tract', 'water_system_number',
-                                               'water_system_name', 'ws_id', 'water_system_number', 'water_system_name', 'ave_red_lean_score', 'ave_score_red_lean_percentile', 'ave_overage_rate', 'overage_percentile']
-    df_wsp_score_census_columns.extend(ws_mean_headers)
-    df_wsp_score_census = df_wsp_score_census[df_wsp_score_census_columns]
+                                               'water_system_name', 'ws_id', 'water_system_number', 'water_system_name', 'ave_red_lean_score', 'ave_score_red_lean_percentile', 'ave_overage_rate', 'overage_percentile']]
 
     # Converting to fractions as some census questions may have varying answer rates
-    # dataset_columns = ['fract_white_alone', 'fract_black_alone', 'fract_ai_and_an_alone', 'fract_asian_alone', 'fract_nh_and_opi_alone', 'fract_other_alone', 'fract_two_or_more_races',
-    #                    'fract_hh_1worker', 'fract_hh_2worker', 'fract_hh_3+worker', 'fract_hh_3ppl', 'fract_hh_4+ppl',
-    #                    'fract_hh_type_fam', 'fract_hh_type_fam_mcf', 'fract_hh_type_fam_mcf_1unit', 'fract_hh_type_fam_mcf_2unit', 'fract_hh_type_fam_mcf_mh_and_other', 'fract_hh_type_fam_other', 'fract_hh_type_fam_other_mhh_nsp', 'fract_hh_type_fam_other_mhh_nsp_1unit', 'fract_hh_type_fam_other_mhh_nsp_2unit', 'fract_hh_type_fam_other_mhh_nsp_mh_and_other', 'fract_hh_type_fam_other_fhh_nsp', 'fract_hh_type_fam_other_fhh_nsp_1unit', 'fract_hh_type_fam_other_fhh_nsp_2unit', 'fract_hh_type_fam_other_fhh_nsp_mh_and_other', 'fract_hh_type_nonfam', 'fract_hh_type_nonfam_1unit', 'fract_hh_type_nonfam_2unit', 'fract_hh_type_nonfam_mh_and_other',
-    #                    'fract_seng_compt_mat_stat_deg', 'fract_seng_bio_ag_env_deg', 'fract_seng_phys_sci_deg', 'fract_seng_psych_deg', 'fract_seng_soc_sci_deg', 'fract_seng_eng_deg', 'fract_seng_mds_deg', 'fract_seng_rltd_deg', 'fract_bus_deg', 'fract_edu_deg', 'fract_aho_lit_lang_deg', 'fract_aho_lib_arts_and_hist_deg', 'fract_aho_vis_perf_art_deg', 'fract_aho_comm_deg', 'fract_aho_other_deg',
-    #                    'fract_hh_income_lt_10k', 'fract_hh_income_10k_15k', 'fract_hh_income_15k_20k', 'fract_hh_income_20k_25k', 'fract_hh_income_25k_30k', 'fract_hh_income_30k_35k', 'fract_hh_income_35k_40k', 'fract_hh_income_40k_45k', 'fract_hh_income_45k_50k', 'fract_hh_income_50k_60k', 'fract_hh_income_60k_75k', 'fract_hh_income_75k_100k', 'fract_hh_income_100k_125k', 'fract_hh_income_125k_150k', 'fract_hh_income_150k_200k', 'fract_hh_income_gt_200k',
-    #                    'fract_hh_own', 'fract_hh_rent',
-    #                    'fract_rent_lt_10pct', 'fract_rent_10_14.9pct', 'fract_rent_15_19.9pct', 'fract_rent_20_24.9pct', 'fract_rent_25_29.9pct', 'fract_rent_30_34.9pct', 'fract_rent_35_39.9pct', 'fract_rent_40_49.9pct', 'fract_rent_gt_50pct', 'fract_rent_not_computed',
-    #                    'fract_have_insurance', 'fract_no_insurance',
-    #                    'num_gw', 'num_sw',
-    #                    'ave_target_timeline', 'ave_method_priority_level', 'ave_num_time_segments', 'ave_num_track_switches',
-    #                    'regulating',
-    #                    'arealand', 'areawater',
-    #                    'population',
-    #                    'ws_id', 'water_system_number', 'water_system_name',
-    #                    'ave_red_lean_score', 'ave_score_red_lean_percentile',
-    #                    'ave_overage_rate', 'overage_percentile']
     dataset_columns = ['fract_white_alone', 'fract_black_alone', 'fract_ai_and_an_alone', 'fract_asian_alone', 'fract_nh_and_opi_alone', 'fract_other_alone', 'fract_two_or_more_races',
                        'fract_hh_1worker', 'fract_hh_2worker', 'fract_hh_3+worker', 'fract_hh_3ppl', 'fract_hh_4+ppl',
                        'fract_hh_type_fam', 'fract_hh_type_fam_mcf', 'fract_hh_type_fam_mcf_1unit', 'fract_hh_type_fam_mcf_2unit', 'fract_hh_type_fam_mcf_mh_and_other', 'fract_hh_type_fam_other', 'fract_hh_type_fam_other_mhh_nsp', 'fract_hh_type_fam_other_mhh_nsp_1unit', 'fract_hh_type_fam_other_mhh_nsp_2unit', 'fract_hh_type_fam_other_mhh_nsp_mh_and_other', 'fract_hh_type_fam_other_fhh_nsp', 'fract_hh_type_fam_other_fhh_nsp_1unit', 'fract_hh_type_fam_other_fhh_nsp_2unit', 'fract_hh_type_fam_other_fhh_nsp_mh_and_other', 'fract_hh_type_nonfam', 'fract_hh_type_nonfam_1unit', 'fract_hh_type_nonfam_2unit', 'fract_hh_type_nonfam_mh_and_other',
@@ -439,13 +392,14 @@ if __name__ == '__main__':
                        'fract_rent_lt_10pct', 'fract_rent_10_14.9pct', 'fract_rent_15_19.9pct', 'fract_rent_20_24.9pct', 'fract_rent_25_29.9pct', 'fract_rent_30_34.9pct', 'fract_rent_35_39.9pct', 'fract_rent_40_49.9pct', 'fract_rent_gt_50pct', 'fract_rent_not_computed',
                        'fract_have_insurance', 'fract_no_insurance',
                        'num_gw', 'num_sw',
+                       'ave_target_timeline', 'ave_method_priority_level', 'ave_num_time_segments', 'ave_num_track_switches',
                        'regulating',
                        'arealand', 'areawater',
                        'population',
                        'ws_id', 'water_system_number', 'water_system_name',
                        'ave_red_lean_score', 'ave_score_red_lean_percentile',
                        'ave_overage_rate', 'overage_percentile']
-    dataset_columns.extend(ws_mean_headers)
+
     data_array = []
     for i, j in df_wsp_score_census.iterrows():
         max_answers = max(j['n_race'], j['hh_size'], j['n_hh_type'], j['n_bachelors_deg'],
@@ -460,12 +414,11 @@ if __name__ == '__main__':
         rent_as_pct_fractions = [None]*10
         insurance_fractions = [None]*2
         gw_sw = [None]*2
-        # timeline_characteristics = [None]*4
+        timeline_characteristics = [None]*4
         regulator = [None]*1
         area = [None]*2
         population = [None]*1
         identity = [None]*3
-        ws_contam_means = [None] * len(ws_mean_headers)
         compliance = [None]*2
         overage = [None]*2
 
@@ -502,14 +455,13 @@ if __name__ == '__main__':
             insurance_fractions = [
                 j['n_have_insurance']/j['n_insurance'], j['n_no_insurance']/j['n_insurance']]
         gw_sw = [j['number_gw'], j['number_sw']]
-        # timeline_characteristics = [j['ave_target_timeline'], j['ave_method_priority_level'],
-        #                             j['ave_num_time_segments'], j['ave_num_track_switches']]
+        timeline_characteristics = [j['ave_target_timeline'], j['ave_method_priority_level'],
+                                    j['ave_num_time_segments'], j['ave_num_track_switches']]
         regulator = [j['regulating']]
         area = [j['arealand'], j['areawater']]
         population = [j['population']]
         identity = [j['ws_id'], j['water_system_number'],
                     j['water_system_name']]
-        ws_mean = [j[header] for header in ws_mean_headers] ## this adds 600+ columns as of most recent data pull
         compliance = [float(j['ave_red_lean_score']), float(
             j['ave_score_red_lean_percentile'])]
         if j['overage_percentile'] != 'NA':
@@ -526,12 +478,11 @@ if __name__ == '__main__':
         data_list.extend(rent_as_pct_fractions)
         data_list.extend(insurance_fractions)
         data_list.extend(gw_sw)
-        # data_list.extend(timeline_characteristics)
+        data_list.extend(timeline_characteristics)
         data_list.extend(regulator)
         data_list.extend(area)
         data_list.extend(population)
         data_list.extend(identity)
-        data_list.extend(ws_mean)
         data_list.extend(compliance)
         data_list.extend(overage)
 
@@ -541,24 +492,17 @@ if __name__ == '__main__':
 
     dataset = dataset.replace(' ', '_', regex=True)
 
-    # variable_sets = ['regulating', 'race', 'hh_size', 'bdeg', 'hh_income', 'hh_own', 'rent_as_pct',
-    #                  'insurance', 'gw_sw', 'timeline_characteristics', 'area', 'population']
+    # powerset (leaving off 'regulating' for now):
+    from itertools import combinations
     variable_sets = ['regulating', 'race', 'hh_size', 'bdeg', 'hh_income', 'hh_own', 'rent_as_pct',
-                     'insurance', 'gw_sw', 'area', 'population', 'ws_contam_means']
-
+                     'insurance', 'gw_sw', 'timeline_characteristics', 'area', 'population']
     var_combinations = list()
-    # print(var_combinations)
     for n in range(len(variable_sets) + 1):
         var_combinations += list(combinations(variable_sets, n))
-    #     print(list(combinations(variable_sets, n)))
-    #     print(list(tuple(list(combinations(variable_sets, n)))))
-       
-    # raise ValueError
     var_combinations.remove(())
     print(
         f'Powerset has {len(var_combinations)} values and took: {time.perf_counter()-start}')
-    # print(var_combinations)
-    # raise ValueError
+
     # Start with the heaviest regressions first to find if hyperparameters need to be cut
     var_combinations = list(reversed(var_combinations))
     var_comb_sublists = []
@@ -572,9 +516,9 @@ if __name__ == '__main__':
 
     # ('hh_size', 'bdeg', 'insurance', 'gw_sw', 'timeline_characteristics')
     # Should have r2 of 0.728174973621484 & adj_r2 of 0.719301468951892
-    test = data_and_regression_selector(dataset, ('ws_contam_means'), 'compliance_score', ws_mean_headers)
-    print(test)
-    raise ValueError
+    # test = data_and_regression_selector(dataset, ('insurance', 'gw_sw', 'timeline_characteristics', 'population'), 'compliance_score')
+    # print(test)
+    # raise ValueError
 
     dependent_vars_to_test = [
         'compliance_score', 'compliance_percentile', 'overage_rate', 'overage_percentile']
@@ -612,7 +556,7 @@ if __name__ == '__main__':
             for var_combo in sublist:
                 print(f'Trying: {var_combo}')
                 regression_outputs.extend(
-                    data_and_regression_selector(dataset, var_combo, dependent, ws_mean_headers))
+                    data_and_regression_selector(dataset, var_combo, dependent))
             sublist_times.append(time.perf_counter() - sublist_start)
             print(
                 f'\n\n\nSublist {sublist_index} finished in (seconds): {time.perf_counter() - sublist_start}')

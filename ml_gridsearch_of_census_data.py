@@ -19,6 +19,8 @@ from catboost import CatBoostRegressor
 from xgboost import XGBRegressor
 from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
 from itertools import combinations
+import math
+
 
 def linear_regression(X, y):
     # # # Multiple Linear Regression:
@@ -178,7 +180,6 @@ def catboost_regression(X, y):
         X, y, test_size=0.2, random_state=83)
     # to evaluate weights
 
-
     # Gridsearch Cross-Validation
     regressor = CatBoostRegressor(silent=True)
     parameters = [{'max_depth': [3, 4, 5],
@@ -195,7 +196,6 @@ def catboost_regression(X, y):
 
     # print(grid_search.best_estimator_)
 
-    
     return df_gridsearch
 
 
@@ -245,7 +245,7 @@ def data_and_regression_selector(data, independent_sets, dependent_variable, ws_
                     'population': ['population'],
                     'ws_contam_means': ws_mean_headers
 
-    }
+                    }
 
     # if independent_sets == 'all':
     #     independent_sets = list(ind_set_dict.keys())
@@ -260,7 +260,7 @@ def data_and_regression_selector(data, independent_sets, dependent_variable, ws_
 
     filtered_data = data[ind_variables]
     X = filtered_data.iloc[:, :].values
-    
+
     dep_var_dict = {'compliance_score': -4, 'compliance_percentile': -
                     3, 'overage_rate': -2, 'overage_percentile': -1}
     y = data.iloc[:, dep_var_dict[dependent_variable]].values
@@ -269,27 +269,26 @@ def data_and_regression_selector(data, independent_sets, dependent_variable, ws_
 
     # Encoding categorical data
 
-
     # if 'ave_target_timeline' in ind_var_columns_list:
     #     ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(sparse=False), [
     #                            ind_var_columns_list.index('ave_target_timeline')])], remainder='passthrough')
     #     X = np.array(ct.fit_transform(X))
 
-
     if 'regulating' in ind_var_columns_list:
-        ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(sparse=False), [ind_var_columns_list.index('regulating')])], remainder='passthrough')
+        ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(sparse=False), [
+                               ind_var_columns_list.index('regulating')])], remainder='passthrough')
         # ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(), [2])], remainder='passthrough')
         X = np.array(ct.fit_transform(X))
-  
+
     # Taking care of missing data
+    print('$$$$$$$$$')
     print(X.shape)
     print(filtered_data.columns.to_list())
     imputer = SimpleImputer(missing_values=np.nan, strategy='mean')
     imputer.fit(X[:])
     # Transform method then does the replacement of all the nan with mean
     X[:] = imputer.transform(X[:])
-    
- 
+
     times = []
     df_gridsearch_results = []
     start_regs = time.perf_counter()
@@ -300,6 +299,8 @@ def data_and_regression_selector(data, independent_sets, dependent_variable, ws_
     print(f'lin_reg took: {times[-1]}')
 
     if df_gridsearch_results[0]['mean_test_score'].max() >= 0.5:
+        print(df_gridsearch_results[0])
+        raise ValueError
         df_gridsearch_results.append(polynomial_regression(X, y))
 
         poly_fin = time.perf_counter()
@@ -361,7 +362,7 @@ if __name__ == '__main__':
     df_ws_overage = pd.read_sql_query(
         "SELECT * from overage_count_and_percentile_ws", conn)
     df_ws_contam_mean = pd.read_sql_query(
-        "SELECT * from water_system_contam_mean", conn)
+        "SELECT * from ws_sampled_and_reviewed_contam_mean", conn)
     conn.close()
 
     df_ws_compliance_and_overage = pd.merge(
@@ -377,6 +378,17 @@ if __name__ == '__main__':
         df_wsp_score_census['ave_red_lean_score'] != 'TBD') & (df_wsp_score_census['ave_red_lean_score'] != 'NA')]
     df_wsp_score_census = df_wsp_score_census[(df_wsp_score_census['ave_overage_rate'] != 'PMD') & (
         df_wsp_score_census['ave_overage_rate'] != 'TBD') & (df_wsp_score_census['ave_overage_rate'] != 'NA')]
+
+    # Removing contam columns that are empty after filtering for active, raw sources in community water systems
+    ws_columns_list = df_wsp_score_census.columns.to_list()
+    for column in ws_columns_list:
+        unique_column_values = df_wsp_score_census[column].unique()
+        unique_val_str = str(unique_column_values[0])
+        if len(unique_column_values) == 1 and unique_val_str == 'nan':
+            df_wsp_score_census = df_wsp_score_census.drop([column], axis=1)
+            df_ws_contam_mean = df_ws_contam_mean.drop([column], axis=1)
+
+    ws_mean_headers = df_ws_contam_mean.columns.to_list()[1:]
 
     df_wsp_score_census.drop(['n_100pct_pov_lvl', 'n_101_149pct_pov_lvl', 'n_150pct_pov_lvl', 'id',
                              'pserved', 'type', 'primary_source_water_type', 'ur', 'water_sy_1', 'pop100'], axis=1, inplace=True)
@@ -395,18 +407,18 @@ if __name__ == '__main__':
     #                                            'population',
     #                                            'basename', 'centlat', 'centlon', 'funcstat', 'geoid', 'geo_id', 'hu100', 'intptlat', 'intptlon', 'lsadc', 'mtfcc', 'name', 'objectid', 'oid', 'sabl_pwsid', 'state_clas', 'county', 'proportion', 'state', 'tract', 'water_system_number',
     #                                            'water_system_name', 'ws_id', 'water_system_number', 'water_system_name', 'ave_red_lean_score', 'ave_score_red_lean_percentile', 'ave_overage_rate', 'overage_percentile']]
-    ws_mean_headers = df_ws_contam_mean.columns.to_list()[1:]
+
     df_wsp_score_census_columns = ['n_race', 'n_white_alone', 'n_black_alone', 'n_ai_and_an_alone', 'n_asian_alone', 'n_nh_and_opi_alone', 'n_other_alone', 'n_two_or_more_races',
-                                               'hh_size', 'hh_1worker', 'hh_2worker', 'hh_3+worker', 'n_hh_3ppl', 'n_hh_4+ppl',
-                                              'n_hh_type', 'n_hh_type_fam', 'n_hh_type_fam_mcf', 'n_hh_type_fam_mcf_1unit', 'n_hh_type_fam_mcf_2unit', 'n_hh_type_fam_mcf_mh_and_other', 'n_hh_type_fam_other', 'n_hh_type_fam_other_mhh_nsp', 'n_hh_type_fam_other_mhh_nsp_1unit', 'n_hh_type_fam_other_mhh_nsp_2unit', 'n_hh_type_fam_other_mhh_nsp_mh_and_other', 'n_hh_type_fam_other_fhh_nsp', 'n_hh_type_fam_other_fhh_nsp_1unit', 'n_hh_type_fam_other_fhh_nsp_2unit', 'n_hh_type_fam_other_fhh_nsp_mh_and_other', 'n_hh_type_nonfam', 'n_hh_type_nonfam_1unit', 'n_hh_type_nonfam_2unit', 'n_hh_type_nonfam_mh_and_other',
-                                               'n_bachelors_deg', 'n_seng_compt_mat_stat_deg', 'n_seng_bio_ag_env_deg', 'n_seng_phys_sci_deg', 'n_seng_psych_deg', 'n_seng_soc_sci_deg', 'n_seng_eng_deg', 'n_seng_mds_deg', 'n_seng_rltd_deg', 'n_bus_deg', 'n_edu_deg', 'n_aho_lit_lang_deg', 'n_aho_lib_arts_and_hist_deg', 'n_aho_vis_perf_art_deg', 'n_aho_comm_deg', 'n_aho_other_deg',
-                                               'n_hh_income', 'n_hh_income_lt_10k', 'n_hh_income_10k_15k', 'n_hh_income_15k_20k', 'n_hh_income_20k_25k', 'n_hh_income_25k_30k', 'n_hh_income_30k_35k', 'n_hh_income_35k_40k', 'n_hh_income_40k_45k', 'n_hh_income_45k_50k', 'n_hh_income_50k_60k', 'n_hh_income_60k_75k', 'n_hh_income_75k_100k', 'n_hh_income_100k_125k', 'n_hh_income_125k_150k', 'n_hh_income_150k_200k', 'n_hh_income_gt_200k',
-                                               'n_hh_housing_units', 'n_hh_own', 'n_hh_rent',
-                                               'n_rent_as_pct', 'n_rent_lt_10pct', 'n_rent_10_14.9pct', 'n_rent_15_19.9pct', 'n_rent_20_24.9pct', 'n_rent_25_29.9pct', 'n_rent_30_34.9pct', 'n_rent_35_39.9pct', 'n_rent_40_49.9pct', 'n_rent_gt_50pct', 'n_rent_not_computed',
-                                               'n_insurance', 'n_have_insurance', 'n_no_insurance',
-                                               'number_gw', 'number_sw',
-                                               'regulating',
-                                               'arealand', 'areawater',
+                                   'hh_size', 'hh_1worker', 'hh_2worker', 'hh_3+worker', 'n_hh_3ppl', 'n_hh_4+ppl',
+                                   'n_hh_type', 'n_hh_type_fam', 'n_hh_type_fam_mcf', 'n_hh_type_fam_mcf_1unit', 'n_hh_type_fam_mcf_2unit', 'n_hh_type_fam_mcf_mh_and_other', 'n_hh_type_fam_other', 'n_hh_type_fam_other_mhh_nsp', 'n_hh_type_fam_other_mhh_nsp_1unit', 'n_hh_type_fam_other_mhh_nsp_2unit', 'n_hh_type_fam_other_mhh_nsp_mh_and_other', 'n_hh_type_fam_other_fhh_nsp', 'n_hh_type_fam_other_fhh_nsp_1unit', 'n_hh_type_fam_other_fhh_nsp_2unit', 'n_hh_type_fam_other_fhh_nsp_mh_and_other', 'n_hh_type_nonfam', 'n_hh_type_nonfam_1unit', 'n_hh_type_nonfam_2unit', 'n_hh_type_nonfam_mh_and_other',
+                                   'n_bachelors_deg', 'n_seng_compt_mat_stat_deg', 'n_seng_bio_ag_env_deg', 'n_seng_phys_sci_deg', 'n_seng_psych_deg', 'n_seng_soc_sci_deg', 'n_seng_eng_deg', 'n_seng_mds_deg', 'n_seng_rltd_deg', 'n_bus_deg', 'n_edu_deg', 'n_aho_lit_lang_deg', 'n_aho_lib_arts_and_hist_deg', 'n_aho_vis_perf_art_deg', 'n_aho_comm_deg', 'n_aho_other_deg',
+                                   'n_hh_income', 'n_hh_income_lt_10k', 'n_hh_income_10k_15k', 'n_hh_income_15k_20k', 'n_hh_income_20k_25k', 'n_hh_income_25k_30k', 'n_hh_income_30k_35k', 'n_hh_income_35k_40k', 'n_hh_income_40k_45k', 'n_hh_income_45k_50k', 'n_hh_income_50k_60k', 'n_hh_income_60k_75k', 'n_hh_income_75k_100k', 'n_hh_income_100k_125k', 'n_hh_income_125k_150k', 'n_hh_income_150k_200k', 'n_hh_income_gt_200k',
+                                   'n_hh_housing_units', 'n_hh_own', 'n_hh_rent',
+                                   'n_rent_as_pct', 'n_rent_lt_10pct', 'n_rent_10_14.9pct', 'n_rent_15_19.9pct', 'n_rent_20_24.9pct', 'n_rent_25_29.9pct', 'n_rent_30_34.9pct', 'n_rent_35_39.9pct', 'n_rent_40_49.9pct', 'n_rent_gt_50pct', 'n_rent_not_computed',
+                                   'n_insurance', 'n_have_insurance', 'n_no_insurance',
+                                   'number_gw', 'number_sw',
+                                   'regulating',
+                                   'arealand', 'areawater',
                                                'population',
                                                'basename', 'centlat', 'centlon', 'funcstat', 'geoid', 'geo_id', 'hu100', 'intptlat', 'intptlon', 'lsadc', 'mtfcc', 'name', 'objectid', 'oid', 'sabl_pwsid', 'state_clas', 'county', 'proportion', 'state', 'tract', 'water_system_number',
                                                'water_system_name', 'ws_id', 'water_system_number', 'water_system_name', 'ave_red_lean_score', 'ave_score_red_lean_percentile', 'ave_overage_rate', 'overage_percentile']
@@ -509,7 +521,8 @@ if __name__ == '__main__':
         population = [j['population']]
         identity = [j['ws_id'], j['water_system_number'],
                     j['water_system_name']]
-        ws_mean = [j[header] for header in ws_mean_headers] ## this adds 600+ columns as of most recent data pull
+        # this adds 600+ columns as of most recent data pull
+        ws_mean = [j[header] for header in ws_mean_headers]
         compliance = [float(j['ave_red_lean_score']), float(
             j['ave_score_red_lean_percentile'])]
         if j['overage_percentile'] != 'NA':
@@ -552,7 +565,7 @@ if __name__ == '__main__':
         var_combinations += list(combinations(variable_sets, n))
     #     print(list(combinations(variable_sets, n)))
     #     print(list(tuple(list(combinations(variable_sets, n)))))
-       
+
     # raise ValueError
     var_combinations.remove(())
     print(
@@ -572,7 +585,8 @@ if __name__ == '__main__':
 
     # ('hh_size', 'bdeg', 'insurance', 'gw_sw', 'timeline_characteristics')
     # Should have r2 of 0.728174973621484 & adj_r2 of 0.719301468951892
-    test = data_and_regression_selector(dataset, ('ws_contam_means'), 'compliance_score', ws_mean_headers)
+    test = data_and_regression_selector(
+        dataset, ('ws_contam_means'), 'compliance_score', ws_mean_headers)
     print(test)
     raise ValueError
 

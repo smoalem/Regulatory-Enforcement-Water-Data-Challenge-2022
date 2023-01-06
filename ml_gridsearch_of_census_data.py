@@ -41,9 +41,6 @@ def linear_regression(X, y):
     df_gridsearch = pd.DataFrame(grid_search.cv_results_)
     df_gridsearch['params'] = df_gridsearch['params'].astype("str")
     df_gridsearch['regression'] = 'linear'
-    print("### LINEAR ")
-    print(grid_search.best_estimator_.coef_)
-    print("### LINEAR ")
     return df_gridsearch
 
 
@@ -221,15 +218,85 @@ def xgboost_regression(X, y):
     return df_gridsearch
 
 
-def data_and_regression_selector(data, independent_sets, dependent_variable, ws_mean_headers):
-    # start_func = time.perf_counter()
-    # print(independent_sets)
+def ws_contam_mean_handler(independent_sets, contam_info_dict):
+    ws_contam_means = ['ws_contam_means_sampled_and_reviewed_and_has_mcl',
+                       'ws_contam_means_sampled_reviewed_has_mcl_and_ninety_percent', 'ws_contam_means_tol']
+
     # print(type(independent_sets))
-    # if type(independent_sets) == tuple:
-    #     independent_sets = list(independent_sets)
-    # print(independent_sets)
+    # print(len(independent_sets))
+    # raise ValueError
+
+    ws_contam_mean_cols = []
+    ws_ind_set_name = 'absent'
+    for ind_set in independent_sets:
+        if ind_set in ws_contam_means:
+            ws_ind_set_name = ind_set
+            ws_contam_mean_cols = contam_info_dict[ind_set[16:]]
+            break
+    return [ws_contam_mean_cols, ws_ind_set_name]
+
+
+# print('contam_mean_handler_test')
+# active_sources = wdc.facilities_to_review()
+# contam_dict = wdc.contam_info_organizer(len_of_source_facs=len(active_sources))
+# start_contam_mean = time.perf_counter()
+# # ws_contam_mean_columns = ws_contam_mean_handler(['regulating', 'race', 'hh_size', 'bdeg', 'hh_income', 'hh_own',
+# #                                                  'rent_as_pct', 'insurance', 'gw_sw', 'area', 'population', 'ws_contam_means_sampled_and_reviewed_and_has_mcl'], contam_dict)
+# ws_contam_mean_columns = ws_contam_mean_handler(['regulating', 'race', 'hh_size', 'bdeg', 'hh_income', 'hh_own',
+#                                                  'rent_as_pct', 'insurance', 'gw_sw', 'area', 'population'], contam_dict)
+# fin_contam_mean = time.perf_counter()
+# print(ws_contam_mean_columns)
+# print(fin_contam_mean - start_contam_mean)
+
+# raise ValueError
+
+
+def data_and_regression_selector(data, independent_sets, dependent_variable, contam_info_dict):
+    print('BEGIN DRS')
+
+    # print(data['water_system_number'])
+    # print(data.dtypes)
+    # raise ValueError
+    # print(type(data))
+    # print(data)
+    # test_df = data.values.tolist()
+    # test_row = test_df[0]
+    # print(type(test_row))
+    # print(test_row)
+    # pre_t_counter = 0
+    # for t in test_row:
+    #     try:
+    #         if t == 'There_are_no_treatment_plants':
+    #             pre_t_counter += 1
+    #     except:
+    #         print('failed on:')
+    #         print(t)
+    #         print(type(t))
+    #         print('_________________________')
+    # print(data.columns.tolist())
+    # raise ValueError
     if len(independent_sets) == 0:
         return [[None]*6, [None]*6]
+
+    ws_mean_check = ws_contam_mean_handler(
+        independent_sets, contam_info_dict)
+    ws_mean_headers = ws_mean_check[0]
+    if len(ws_mean_headers) > 0:
+        ws_mean_headers = [str(i) for i in ws_mean_headers]
+    ws_contam_means = ws_mean_check[1]
+
+    # test_df = data.values.tolist()
+    # test_row = test_df[0]
+    # print(type(test_row))
+    # print(test_row)
+    # post_t_counter = 0
+    # for t in test_row:
+    #     if t == 'There_are_no_treatment_plants':
+    #         pre_t_counter += 1
+    # print(pre_t_counter)
+    # print(post_t_counter)
+    # raise ValueError
+
     ind_variables = []
     ind_set_dict = {'race': ['fract_white_alone', 'fract_black_alone', 'fract_ai_and_an_alone', 'fract_asian_alone', 'fract_nh_and_opi_alone', 'fract_other_alone', 'fract_two_or_more_races'],
                     'hh_size': ['fract_hh_1worker', 'fract_hh_2worker', 'fract_hh_3+worker', 'fract_hh_3ppl', 'fract_hh_4+ppl'],
@@ -238,27 +305,39 @@ def data_and_regression_selector(data, independent_sets, dependent_variable, ws_
                     'hh_own': ['fract_hh_own', 'fract_hh_rent'],
                     'rent_as_pct': ['fract_rent_lt_10pct', 'fract_rent_10_14.9pct', 'fract_rent_15_19.9pct', 'fract_rent_20_24.9pct', 'fract_rent_25_29.9pct', 'fract_rent_30_34.9pct', 'fract_rent_35_39.9pct', 'fract_rent_40_49.9pct', 'fract_rent_gt_50pct', 'fract_rent_not_computed'],
                     'insurance': ['fract_have_insurance', 'fract_no_insurance'],
-                    'gw_sw': ['num_gw', 'num_sw'],
+                    'ws_characteristics': ['number_gw', 'number_sw', 'ave_act_xldate', 'ave_min_xldate', 'ave_max_xldate', 'ave_range_xldate', 'ave_num_unique_contams', 'max_treatment_plant_class'],
                     # 'timeline_characteristics': ['ave_target_timeline', 'ave_method_priority_level', 'ave_num_time_segments', 'ave_num_track_switches'],
                     'regulating': ['regulating'],
                     'area': ['arealand', 'areawater'],
                     'population': ['population'],
-                    'ws_contam_means': ws_mean_headers
+                    ws_contam_means: ws_mean_headers
 
                     }
 
     # if independent_sets == 'all':
     #     independent_sets = list(ind_set_dict.keys())
-    if type(independent_sets) == tuple:
-        for ind in independent_sets:
-            ind_variables.extend(ind_set_dict[ind])
-        independent_variables = ', '.join(independent_sets)
+    # if type(independent_sets) == tuple:
+    #     for ind in independent_sets:
+    #         ind_variables.extend(ind_set_dict[ind])
+    #     independent_variables = ', '.join(independent_sets)
 
-    else:
-        ind_variables.extend(ind_set_dict[independent_sets])
-        independent_variables = independent_sets
+    # else:
+    #     print(independent_sets)
+    #     ind_variables.extend(ind_set_dict[independent_sets])
+    #     independent_variables = independent_sets
+    print('$$$$$$$$$$')
+    print(independent_sets)  # input argument into this function
+    # dictionary used for taking each element in independent_sets and finding their corresponding columns
+    print(ind_set_dict.keys())
+    # supposed to be a dynamic variable where this is a key in the ind_set_dict that can change (depending on the type of ws_contam_mean being selected)
+    print(ws_contam_means)
+
+    for ind in independent_sets:
+        ind_variables.extend(ind_set_dict[ind])
+    independent_variables = ', '.join(independent_sets)
 
     filtered_data = data[ind_variables]
+
     X = filtered_data.iloc[:, :].values
 
     dep_var_dict = {'compliance_score': -4, 'compliance_percentile': -
@@ -269,21 +348,54 @@ def data_and_regression_selector(data, independent_sets, dependent_variable, ws_
 
     # Encoding categorical data
 
-    # if 'ave_target_timeline' in ind_var_columns_list:
+    # print('$$$$$$$$$$$$$')
+    # print(X[0])
+    # test = X[0].tolist()
+    # print(test)
+    # print(ind_var_columns_list.index('max_treatment_plant_class'))
+    # print(len(X[0]))
+    # print(len(test))
+    # print(test.index('There_are_no_treatment_plants'))
+    # pre_reg_ct_X_len = len(X[0].tolist())
+    # if 'regulating' in ind_var_columns_list:
     #     ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(sparse=False), [
-    #                            ind_var_columns_list.index('ave_target_timeline')])], remainder='passthrough')
+    #                            ind_var_columns_list.index('regulating')])], remainder='passthrough')
+    #     # ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(), [2])], remainder='passthrough')
     #     X = np.array(ct.fit_transform(X))
+    # print(X[0])
+    # test = X[0].tolist()
+    # print(test)
+    # print(ind_var_columns_list.index('max_treatment_plant_class'))
+    # print(len(X[0]))
+    # print(len(test))
+    # print(test.index('There_are_no_treatment_plants'))
+    # post_reg_ct_X_len = len(X[0].tolist())
+    # if 'max_treatment_plant_class' in ind_var_columns_list:
+    #     ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(sparse=False), [
+    #                            ind_var_columns_list.index('max_treatment_plant_class')+post_reg_ct_X_len])], remainder='passthrough')
+    #     X = np.array(ct.fit_transform(X))
+    # print(X[0])
+    # test = X[0].tolist()
+    # print(test)
+    # print(ind_var_columns_list.index('max_treatment_plant_class'))
+    # print(len(X[0]))
+    # print(len(test))
+    # print(test.index('There_are_no_treatment_plants'))
+    # print('fin ct')
 
-    if 'regulating' in ind_var_columns_list:
-        ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(sparse=False), [
-                               ind_var_columns_list.index('regulating')])], remainder='passthrough')
-        # ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(), [2])], remainder='passthrough')
+    column_transformer_indices = []
+    for ind_var in ind_var_columns_list:
+        if ind_var == 'max_treatment_plant_class' or ind_var == 'regulating':
+            print(ind_var)
+            column_transformer_indices.append(
+                ind_var_columns_list.index(ind_var))
+
+    if len(column_transformer_indices) > 0:
+        ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(
+            sparse=False), column_transformer_indices)], remainder='passthrough')
         X = np.array(ct.fit_transform(X))
 
     # Taking care of missing data
-    print('$$$$$$$$$')
-    print(X.shape)
-    print(filtered_data.columns.to_list())
     imputer = SimpleImputer(missing_values=np.nan, strategy='mean')
     imputer.fit(X[:])
     # Transform method then does the replacement of all the nan with mean
@@ -299,8 +411,7 @@ def data_and_regression_selector(data, independent_sets, dependent_variable, ws_
     print(f'lin_reg took: {times[-1]}')
 
     if df_gridsearch_results[0]['mean_test_score'].max() >= 0.5:
-        print(df_gridsearch_results[0])
-        raise ValueError
+
         df_gridsearch_results.append(polynomial_regression(X, y))
 
         poly_fin = time.perf_counter()
@@ -361,9 +472,21 @@ if __name__ == '__main__':
         "SELECT * from score_and_percentile_ave_ws", conn)
     df_ws_overage = pd.read_sql_query(
         "SELECT * from overage_count_and_percentile_ws", conn)
-    df_ws_contam_mean = pd.read_sql_query(
-        "SELECT * from ws_sampled_and_reviewed_contam_mean", conn)
+    # df_ws_contam_mean_sampled = pd.read_sql_query(
+    #     "SELECT * from ws_contam_mean_sampled", conn)
+    df_ws_contam_mean_sampled_reviewed_has_mcl = pd.read_sql_query(
+        "SELECT * from ws_contam_mean_sampled_reviewed_has_mcl", conn)
+    # df_ws_contam_mean_sampled_reviewed_has_mcl_and_ninety_percent = pd.read_sql_query(
+    #     "SELECT * from ws_contam_mean_sampled_reviewed_has_mcl_and_ninety_percent", conn)
+    # df_ws_contam_tol = pd.read_sql_query(
+    #     "SELECT * from ws_contam_mean_tol", conn)
     conn.close()
+
+    df_ws_contam_mean = df_ws_contam_mean_sampled_reviewed_has_mcl
+
+    active_sources = wdc.facilities_to_review()['id'].values.tolist()
+    contam_dict = wdc.contam_info_organizer(
+        len_of_source_facs=len(active_sources))
 
     df_ws_compliance_and_overage = pd.merge(
         df_ws_compliance, df_ws_overage, left_on='ws_id', right_on='ws_id', how='left')
@@ -416,13 +539,15 @@ if __name__ == '__main__':
                                    'n_hh_housing_units', 'n_hh_own', 'n_hh_rent',
                                    'n_rent_as_pct', 'n_rent_lt_10pct', 'n_rent_10_14.9pct', 'n_rent_15_19.9pct', 'n_rent_20_24.9pct', 'n_rent_25_29.9pct', 'n_rent_30_34.9pct', 'n_rent_35_39.9pct', 'n_rent_40_49.9pct', 'n_rent_gt_50pct', 'n_rent_not_computed',
                                    'n_insurance', 'n_have_insurance', 'n_no_insurance',
-                                   'number_gw', 'number_sw',
+                                   'number_gw', 'number_sw', 'ave_act_xldate', 'ave_min_xldate', 'ave_max_xldate', 'ave_range_xldate', 'ave_num_unique_contams', 'max_treatment_plant_class',
                                    'regulating',
                                    'arealand', 'areawater',
                                                'population',
                                                'basename', 'centlat', 'centlon', 'funcstat', 'geoid', 'geo_id', 'hu100', 'intptlat', 'intptlon', 'lsadc', 'mtfcc', 'name', 'objectid', 'oid', 'sabl_pwsid', 'state_clas', 'county', 'proportion', 'state', 'tract', 'water_system_number',
-                                               'water_system_name', 'ws_id', 'water_system_number', 'water_system_name', 'ave_red_lean_score', 'ave_score_red_lean_percentile', 'ave_overage_rate', 'overage_percentile']
+                                               'water_system_name', 'ws_id', 'water_system_number', 'water_system_name']  # Moved dependent variables from this list to a couple lines down so that they're the last four items
     df_wsp_score_census_columns.extend(ws_mean_headers)
+    df_wsp_score_census_columns.extend(
+        ['ave_red_lean_score', 'ave_score_red_lean_percentile', 'ave_overage_rate', 'overage_percentile'])
     df_wsp_score_census = df_wsp_score_census[df_wsp_score_census_columns]
 
     # Converting to fractions as some census questions may have varying answer rates
@@ -450,14 +575,14 @@ if __name__ == '__main__':
                        'fract_hh_own', 'fract_hh_rent',
                        'fract_rent_lt_10pct', 'fract_rent_10_14.9pct', 'fract_rent_15_19.9pct', 'fract_rent_20_24.9pct', 'fract_rent_25_29.9pct', 'fract_rent_30_34.9pct', 'fract_rent_35_39.9pct', 'fract_rent_40_49.9pct', 'fract_rent_gt_50pct', 'fract_rent_not_computed',
                        'fract_have_insurance', 'fract_no_insurance',
-                       'num_gw', 'num_sw',
+                       'number_gw', 'number_sw', 'ave_act_xldate', 'ave_min_xldate', 'ave_max_xldate', 'ave_range_xldate', 'ave_num_unique_contams', 'max_treatment_plant_class',
                        'regulating',
                        'arealand', 'areawater',
                        'population',
-                       'ws_id', 'water_system_number', 'water_system_name',
-                       'ave_red_lean_score', 'ave_score_red_lean_percentile',
-                       'ave_overage_rate', 'overage_percentile']
+                       'ws_id', 'water_system_number', 'water_system_name']  # Moved dependent variables from this list to a couple lines down so that they're the last four items
     dataset_columns.extend(ws_mean_headers)
+    dataset_columns.extend(
+        ['ave_red_lean_score', 'ave_score_red_lean_percentile', 'ave_overage_rate', 'overage_percentile'])
     data_array = []
     for i, j in df_wsp_score_census.iterrows():
         max_answers = max(j['n_race'], j['hh_size'], j['n_hh_type'], j['n_bachelors_deg'],
@@ -471,7 +596,7 @@ if __name__ == '__main__':
         hh_ownership_fractions = [None]*2
         rent_as_pct_fractions = [None]*10
         insurance_fractions = [None]*2
-        gw_sw = [None]*2
+        ws_characteristics = [None]*8
         # timeline_characteristics = [None]*4
         regulator = [None]*1
         area = [None]*2
@@ -513,7 +638,9 @@ if __name__ == '__main__':
         if j['n_insurance'] > 0:
             insurance_fractions = [
                 j['n_have_insurance']/j['n_insurance'], j['n_no_insurance']/j['n_insurance']]
-        gw_sw = [j['number_gw'], j['number_sw']]
+        ws_characteristics = [j['number_gw'], j['number_sw'], j['ave_act_xldate'],
+                              j['ave_min_xldate'], j['ave_max_xldate'], j['ave_range_xldate'],
+                              j['ave_num_unique_contams'], j['max_treatment_plant_class']]
         # timeline_characteristics = [j['ave_target_timeline'], j['ave_method_priority_level'],
         #                             j['ave_num_time_segments'], j['ave_num_track_switches']]
         regulator = [j['regulating']]
@@ -538,7 +665,7 @@ if __name__ == '__main__':
         data_list.extend(hh_ownership_fractions)
         data_list.extend(rent_as_pct_fractions)
         data_list.extend(insurance_fractions)
-        data_list.extend(gw_sw)
+        data_list.extend(ws_characteristics)
         # data_list.extend(timeline_characteristics)
         data_list.extend(regulator)
         data_list.extend(area)
@@ -549,29 +676,52 @@ if __name__ == '__main__':
         data_list.extend(overage)
 
         data_array.append(data_list)
-
     dataset = pd.DataFrame(data_array, columns=dataset_columns)
 
     dataset = dataset.replace(' ', '_', regex=True)
 
+    # dataset[['water_system_number']] = dataset[[
+    #     'water_system_number']].values.astype('|S')
+    # dataset[['water_system_name']] = dataset[[
+    #     'water_system_name']].values.astype('|S')
+    # print(dataset)
+    # print(dataset.columns.to_list())
+    # print(dataset.dtypes)
+    # for col in dataset.columns.to_list():
+    #     print(f'Column: {col}')
+    #     print(dataset[col].iloc[0])
+    #     print(type(dataset[col].iloc[0]))
+    # raise ValueError
+
     # variable_sets = ['regulating', 'race', 'hh_size', 'bdeg', 'hh_income', 'hh_own', 'rent_as_pct',
     #                  'insurance', 'gw_sw', 'timeline_characteristics', 'area', 'population']
     variable_sets = ['regulating', 'race', 'hh_size', 'bdeg', 'hh_income', 'hh_own', 'rent_as_pct',
-                     'insurance', 'gw_sw', 'area', 'population', 'ws_contam_means']
-
-    var_combinations = list()
+                     'insurance', 'ws_characteristics', 'area', 'population', 'ws_contam_means']
+# 1/2 to do:
+# take the variable sets and add 3X more by adding the three types of ws_contams
+# make ws_contam_mean_handler see which contam it is and assign proper headers
+# also integrate new ws_characteristics variable sets
+    pre_var_combinations = list()
     # print(var_combinations)
     for n in range(len(variable_sets) + 1):
-        var_combinations += list(combinations(variable_sets, n))
+        pre_var_combinations += list(combinations(variable_sets, n))
     #     print(list(combinations(variable_sets, n)))
     #     print(list(tuple(list(combinations(variable_sets, n)))))
 
     # raise ValueError
-    var_combinations.remove(())
+    pre_var_combinations.remove(())
+    ws_contam_possibilities = ['ws_contam_means_sampled_and_reviewed_and_has_mcl',
+                               'ws_contam_means_sampled_reviewed_has_mcl_and_ninety_percent', 'ws_contam_means_tol', '']
+    var_combinations = []
+    for var in pre_var_combinations:
+        var = list(var)
+        for ws_contam in ws_contam_possibilities:
+            new_var = var.append(ws_contam)
+            var_combinations.append(new_var)
+
     print(
         f'Powerset has {len(var_combinations)} values and took: {time.perf_counter()-start}')
-    # print(var_combinations)
-    # raise ValueError
+
     # Start with the heaviest regressions first to find if hyperparameters need to be cut
     var_combinations = list(reversed(var_combinations))
     var_comb_sublists = []
@@ -580,13 +730,30 @@ if __name__ == '__main__':
         new_var_sublist = var_combinations[i:i+sublist_size]
         var_comb_sublists.append(new_var_sublist)
 
-    for i in var_comb_sublists:
-        print(len(i))
+    active_sources = wdc.facilities_to_review()
+    contam_dict = wdc.contam_info_organizer(
+        len_of_source_facs=len(active_sources))
 
     # ('hh_size', 'bdeg', 'insurance', 'gw_sw', 'timeline_characteristics')
     # Should have r2 of 0.728174973621484 & adj_r2 of 0.719301468951892
+    # test = data_and_regression_selector(
+    #     dataset, ('regulating', 'race', 'hh_size', 'bdeg', 'hh_income', 'hh_own', 'rent_as_pct', 'insurance', 'ws_characteristics', 'area', 'population', 'ws_contam_means'), 'compliance_score', contam_info_dict=contam_dict)
+    # test = data_and_regression_selector(
+    #     dataset, ('regulating', 'race', 'hh_size', 'bdeg', 'hh_income', 'hh_own', 'rent_as_pct',
+    #               'insurance', 'ws_characteristics', 'area', 'population', 'ws_characteristics',
+    #               'ws_contam_means_sampled_and_reviewed_and_has_mcl'), 'compliance_score', contam_info_dict=contam_dict)
+    # test = data_and_regression_selector(
+    #     dataset, ('population'), 'compliance_score', contam_info_dict=contam_dict) #r2: 0.011345
+    # test = data_and_regression_selector(
+    #     dataset, ('regulating'), 'compliance_score', contam_info_dict=contam_dict)  # r2: -5.777461306891629e+24
+    # test = data_and_regression_selector(
+    #     dataset, ['ws_contam_means_sampled_and_reviewed_and_has_mcl'], 'compliance_score', contam_info_dict=contam_dict)  # r2: -3381.4498769064385
+    # test = data_and_regression_selector(
+    #     dataset, ['ws_contam_means_sampled_and_reviewed_and_has_mcl', 'regulating'], 'compliance_score', contam_info_dict=contam_dict)  # r2: 0.01411266326904297
     test = data_and_regression_selector(
-        dataset, ('ws_contam_means'), 'compliance_score', ws_mean_headers)
+        dataset, ['ws_contam_means_sampled_and_reviewed_and_has_mcl', 'regulating', 'race', 'hh_size', 'bdeg', 'hh_income', 'hh_own',
+                  'rent_as_pct', 'insurance', 'ws_characteristics', 'area', 'population'], 'compliance_score', contam_info_dict=contam_dict)  # r2:
+
     print(test)
     raise ValueError
 
@@ -659,4 +826,13 @@ if __name__ == '__main__':
     print(s.getvalue())
 
 
-# Seconds: 69684.5779637
+# Sublist 68 finished in (seconds): 1.1064024999996036
+# All sublist times for this dep variable (seconds): [103.9742126000001, 55.34220599999935, 89.49392670000088, 105.82536609999988, 84.35253089999969, 33.14480309999999, 30.4981841000008, 48.08234689999881, 100.23615090000021, 88.50888739999937, 91.04652899999928, 81.54923529999905, 74.24947489999977, 36.52027730000009, 28.256397400000424, 26.851413100001082, 25.197115800001484, 24.42059120000158, 43.0787317000013, 89.700808399999, 80.57050229999913, 73.56183810000039, 79.07238799999868, 75.57616599999892, 68.42094399999951, 58.497767299999396, 36.957466300000306, 26.514084800001, 23.613819400001375, 19.562766200000624, 24.603578899999775, 19.043618499999866, 21.203858500000933, 16.075998700000127, 75.92722660000072, 72.68734519999998, 69.55366309999954, 55.76558880000084, 65.74894290000157, 57.947591199999806, 51.665888300000006, 38.42283359999965, 23.69500759999937, 19.58159809999961, 19.71233360000042, 15.288374199999453, 20.62442960000044, 15.843364299998939, 15.101601899999878, 44.47398330000033, 61.33699290000004, 54.88535799999954, 40.18171000000075, 53.701314699999784, 33.661257800000385, 20.777416200000516, 15.81653389999883, 15.013891600001443, 14.577416899999662, 12.215345999999045, 36.162153899998884, 42.15758209999876, 30.535738999999012, 18.138485199999195, 10.594220300001325, 8.293888099999094, 26.969978199998877, 9.328064899998935, 1.1064000999995187]
+
+
+# Index for ml_regressions_gridsearch on key(s) independent_variables created.
+# Index for ml_regressions_gridsearch on key(s) params created.
+# Index for ml_regressions_gridsearch on key(s) mean_test_score created.
+# Index for ml_regressions_gridsearch on key(s) regression created.
+# Seconds: 12088.4273863
+#          504654571 function calls (495942066 primitive calls) in 12011.719 seconds

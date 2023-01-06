@@ -146,3 +146,78 @@ def create_index(table_name, **index_names):
 
     except ValueError:
         print("Error happened")
+
+
+def facilities_to_review():
+    conn = sql_query_conn()
+    df_all_facilities = pd.read_sql_query(
+        "SELECT fac.id, fac.activity_xldate, fac.facility_name, fac.sample_point_type, fac.activity_status, fac.facility_type, fac.activity_reason_text, wsp.pserved, primary_source_water_type, ptype, type from facilities fac LEFT JOIN water_system_primary wsp ON fac.ws_id = wsp.id", conn)
+    conn.close()
+
+    df_active_source_resi_comm = df_all_facilities[(df_all_facilities["activity_status"] == 'A') & ((df_all_facilities["sample_point_type"] == 'RW') | (
+        df_all_facilities["sample_point_type"] == 'SR')) & (df_all_facilities["facility_type"] != 'DS') & (df_all_facilities["type"] == 'C') & ((df_all_facilities["ptype"] == 'R') | (df_all_facilities["ptype"] == 'W')) & ((df_all_facilities["sample_point_type"] != 'SS') & (df_all_facilities["sample_point_type"] != 'CS') & (df_all_facilities["sample_point_type"] != 'OT'))]
+    filtered_facilities_list = []
+    for index, row in df_active_source_resi_comm.iterrows():
+        if ' treated' not in row['activity_reason_text'].lower():
+            filtered_facilities_list.append(list(row))
+
+    df_filtered_facilities = pd.DataFrame(filtered_facilities_list, columns=[
+                                          'id', 'activity_xldate', 'facility_name', 'sample_point_type', 'activity_status', 'facility_type', 'activity_reason_text', 'pserved', 'primary_source_water_type', 'ptype', 'type'])
+    # print(df_filtered_facilities) # 8941 rows
+    df_filtered_facilities_with_relevant_columns = df_filtered_facilities[[
+        "id", "activity_xldate", "facility_type", "pserved", "primary_source_water_type"]]
+    # print(df_filtered_facilities) # 8941 rows
+    return df_filtered_facilities_with_relevant_columns
+
+
+# print(facilities_to_review())
+# print(len(facilities_to_review()))
+# raise ValueError
+
+
+def contam_info_organizer(len_of_source_facs):
+    conn = sql_query_conn()
+    contam_df = pd.read_sql_query("SELECT * from contam_info", conn)
+    conn.close()
+    all_contams = contam_df.id.unique().tolist()
+    tol_contams = contam_df[contam_df['library_group']
+                            == 'tol'].id.unique().tolist()
+    sampled_contams = contam_df[contam_df['unique_sampled_facilities'] > 0].id.unique(
+    ).tolist()
+    not_sampled_contams = contam_df[contam_df['unique_sampled_facilities'] == 0].id.unique(
+    ).tolist()
+    sampled_and_reviewed_contams = contam_df[contam_df['unique_sampled_and_reviewed_facilities'] > 0].id.unique(
+    ).tolist()
+    sampled_and_reviewed_and_has_mcl_contams = contam_df[(contam_df['unique_sampled_and_reviewed_facilities'] > 0) & (contam_df['mcl'] > 0)].id.unique(
+    ).tolist()
+    sampled_reviewed_has_mcl_and_ninety_percent_contams = contam_df[(
+        contam_df['unique_sampled_and_reviewed_facilities'] > 0.1*len_of_source_facs) & (contam_df['mcl'] > 0)].id.unique().tolist()
+    id_mcl_dict = {}
+    for i, j in contam_df[(contam_df['unique_sampled_and_reviewed_facilities'] > 0) & (contam_df['mcl'] > 0)].iterrows():
+        id_mcl_dict[j['id']] = j['mcl']
+    return {'all': all_contams, 'tol': tol_contams, 'sampled': sampled_contams, 'not_sampled': not_sampled_contams, 'sampled_and_reviewed': sampled_and_reviewed_contams, 'sampled_and_reviewed_and_has_mcl': sampled_and_reviewed_and_has_mcl_contams, 'sampled_reviewed_has_mcl_and_ninety_percent': sampled_reviewed_has_mcl_and_ninety_percent_contams, 'id_mcl_dict': id_mcl_dict}
+
+
+# print('contam_info_organizer test')
+# source_facs = facilities_to_review()['id'].values.tolist()
+# start = time.perf_counter()
+# contam_dict = contam_info_organizer(len_of_source_facs=len(source_facs))
+# fin = time.perf_counter()
+# print(contam_dict['all'])
+# print(contam_dict['sampled'])
+# print(contam_dict['sampled_and_reviewed'])
+# print(contam_dict['sampled_and_reviewed_and_has_mcl'])
+# print(contam_dict['sampled_reviewed_has_mcl_and_ninety_percent'])
+# print(contam_dict['tol'])
+# print(contam_dict['not_sampled'])
+# print(contam_dict['id_mcl_dict'])
+# print(len(contam_dict['all']))  # 675
+# print(len(contam_dict['sampled']))  # 675
+# print(len(contam_dict['sampled_and_reviewed']))  # 674
+# print(len(contam_dict['sampled_and_reviewed_and_has_mcl']))  # 165
+# print(len(contam_dict['sampled_reviewed_has_mcl_and_ninety_percent']))  # 135
+# print(len(contam_dict['tol']))  # 49
+# print(len(contam_dict['not_sampled']))  # 0
+# print(len(contam_dict['id_mcl_dict']))  # 165
+# print(fin - start)
+# raise ValueError

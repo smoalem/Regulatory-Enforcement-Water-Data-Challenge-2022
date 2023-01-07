@@ -94,7 +94,7 @@ def support_vector_regression(X, y):
     parameters = [{'kernel': ['linear'], 'C': [0.1, 1, 5]},
                   {'kernel': ['rbf', 'sigmoid'], 'gamma': [
                       0.0001, 0.01, 0.1, 1, 5, 10], 'C': [0.1, 1, 5]},
-                  {'kernel': ['poly'], 'gamma': [0.0001, 0.001, 0.01],  'C': [0.1, 1, 5], 'degree': [2, 3]}]
+                  {'kernel': ['poly'], 'gamma': [0.0001, 0.001, 0.005],  'C': [0.1, 1, 5], 'degree': [2, 3]}]
     grid_search = GridSearchCV(estimator=regressor,
                                param_grid=parameters,
                                scoring='r2',
@@ -565,8 +565,11 @@ if __name__ == '__main__':
     #               'rent_as_pct', 'insurance', 'ws_characteristics', 'area', 'population'], 'compliance_score', contam_info_dict=contam_dict)  # r2: -3701.774428671103
     # test = data_and_regression_selector(
     #     dataset, ['regulating', 'hh_size', 'ws_characteristics', 'population'], 'compliance_score', contam_info_dict=contam_dict)  # r2: 0.25772863324490525
-    # print(test)
-    # raise ValueError
+    test = data_and_regression_selector(dataset, ['regulating', 'race', 'hh_size', 'bdeg', 'hh_income', 'rent_as_pct',
+                                        'insurance', 'area', 'population'], 'compliance_percentile', contam_info_dict=contam_dict)  # r2:
+
+    print(test)
+    raise ValueError
 
     dependent_vars_to_test = [
         'compliance_score', 'compliance_percentile', 'overage_rate', 'overage_percentile']

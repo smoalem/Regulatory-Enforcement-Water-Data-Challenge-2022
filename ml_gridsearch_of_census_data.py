@@ -91,10 +91,10 @@ def support_vector_regression(X, y):
 
     # Gridsearch Cross-Validation
     regressor = SVR()
-    parameters = [{'kernel': ['linear'], 'C': [0.1, 1, 5]},
+    parameters = [{'kernel': ['linear'], 'C': [0.01, 0.05]},
                   {'kernel': ['rbf', 'sigmoid'], 'gamma': [
-                      0.0001, 0.01, 0.1, 1, 5, 10], 'C': [0.1, 1, 5]},
-                  {'kernel': ['poly'], 'gamma': [0.0001, 0.001, 0.005],  'C': [0.1, 1, 5], 'degree': [2, 3]}]
+                      0.0001, 0.01, 0.1, 1, 5, 10], 'C': [0.01, 0.05]},
+                  {'kernel': ['poly'], 'gamma': [0.0001, 0.001, 0.005],  'C': [0.01, 0.05], 'degree': [2, 3]}]
     grid_search = GridSearchCV(estimator=regressor,
                                param_grid=parameters,
                                scoring='r2',
@@ -565,11 +565,16 @@ if __name__ == '__main__':
     #               'rent_as_pct', 'insurance', 'ws_characteristics', 'area', 'population'], 'compliance_score', contam_info_dict=contam_dict)  # r2: -3701.774428671103
     # test = data_and_regression_selector(
     #     dataset, ['regulating', 'hh_size', 'ws_characteristics', 'population'], 'compliance_score', contam_info_dict=contam_dict)  # r2: 0.25772863324490525
-    test = data_and_regression_selector(dataset, ['regulating', 'race', 'hh_size', 'bdeg', 'hh_income', 'rent_as_pct',
-                                        'insurance', 'area', 'population'], 'compliance_percentile', contam_info_dict=contam_dict)  # r2:
+    # test = data_and_regression_selector(dataset, ['regulating', 'race', 'hh_size', 'bdeg', 'hh_income', 'rent_as_pct',
+    #                                     'insurance', 'area', 'population'], 'compliance_percentile', contam_info_dict=contam_dict)  # r2:
+    # test = data_and_regression_selector(dataset, ['regulating', 'bdeg', 'hh_income', 'hh_own', 'rent_as_pct', 'insurance', 'area', 'population'], 'compliance_percentile', contam_info_dict=contam_dict)  # r2:
+    # test = data_and_regression_selector(dataset, ['regulating', 'hh_size', 'bdeg', 'hh_income', 'hh_own', 'area', 'population'], 'compliance_percentile', contam_info_dict=contam_dict)  # r2:
+    # test = data_and_regression_selector(dataset, ['regulating', 'race', 'bdeg', 'hh_income', 'rent_as_pct', 'area', 'population'], 'compliance_percentile', contam_info_dict=contam_dict)  # r2:
 
-    print(test)
-    raise ValueError
+ 
+
+    # print(test)
+    # raise ValueError
 
     dependent_vars_to_test = [
         'compliance_score', 'compliance_percentile', 'overage_rate', 'overage_percentile']
@@ -593,7 +598,7 @@ if __name__ == '__main__':
                     data_and_regression_selector(dataset, var_combo, dependent, contam_info_dict=contam_dict))
             sublist_times.append(time.perf_counter() - sublist_start)
             print(
-                f'\n\n\nSublist {sublist_index} finished in (seconds): {time.perf_counter() - sublist_start}')
+                f'\n\n\nSublist {sublist_index} of {len(var_comb_sublists)} in dependent variable {dependent} finished in (seconds): {time.perf_counter() - sublist_start}')
             print(
                 f'All sublist times for this dep variable (seconds): {sublist_times}\n\n')
 

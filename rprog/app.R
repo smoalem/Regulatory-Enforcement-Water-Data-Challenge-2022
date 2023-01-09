@@ -54,9 +54,7 @@ ui <- dashboardPage(
 server <- function(input, output) {
   ### dataframe load
   # map_switch <- reactiveValue()
-
-  url <- "C:/Users/hoonje92/Documents/GitHub/Regulatory-Enforcement-Water-Data-Challenge-2022/removed_neg_scores.geojson"
-  res <- readOGR(dsn = url, layer="removed_neg_scores")
+  res <- readOGR(dsn = "./rprog/water_system_with_scores_updated_3.geojson", layer="water_system_with_scores_updated_3")
 ### Render UI
   dropdown_input <- reactive({
     input$complianceOverageInput

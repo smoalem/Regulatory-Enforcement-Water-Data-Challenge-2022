@@ -251,7 +251,6 @@ def data_and_regression_selector(data, independent_sets, dependent_variable, con
                     'area': ['arealand', 'areawater'],
                     'population': ['population'],
                     ws_contam_means: ws_mean_headers
-
                     }
 
     for ind in independent_sets:
@@ -570,8 +569,6 @@ if __name__ == '__main__':
     # test = data_and_regression_selector(dataset, ['regulating', 'bdeg', 'hh_income', 'hh_own', 'rent_as_pct', 'insurance', 'area', 'population'], 'compliance_percentile', contam_info_dict=contam_dict)  # r2:
     # test = data_and_regression_selector(dataset, ['regulating', 'hh_size', 'bdeg', 'hh_income', 'hh_own', 'area', 'population'], 'compliance_percentile', contam_info_dict=contam_dict)  # r2:
     # test = data_and_regression_selector(dataset, ['regulating', 'race', 'bdeg', 'hh_income', 'rent_as_pct', 'area', 'population'], 'compliance_percentile', contam_info_dict=contam_dict)  # r2:
-
- 
 
     # print(test)
     # raise ValueError

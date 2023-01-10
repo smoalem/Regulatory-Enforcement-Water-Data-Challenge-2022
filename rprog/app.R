@@ -10,6 +10,7 @@ library(magrittr) # needs to be run every time you start R and want to use %>%
 library(dplyr)    # alternatively, this also loads %>%
 library(jsonlite)
 library(rgeos)
+library(sf)
 #
 
 
@@ -18,7 +19,7 @@ library(rgeos)
 # #
 ui <- dashboardPage(
   dashboardHeader(
-    title="TEST"
+    title="Water System Regulatory Compliance Review Map"
   ),
   dashboardSidebar(
     width = 350,
@@ -35,11 +36,12 @@ ui <- dashboardPage(
         leafletOutput("camap")
 
       ),
+
       tabPanel(
-        title = "Data"
-      ),
-      tabPanel(
-        title = "FAQ"
+        title = "Data Source",
+        tags$a(href="https://github.com/smoalem/Regulatory-Enforcement-Water-Data-Challenge-2022", "Reulatory Enforcement Github Page"),
+        br(),
+        "Please post your questions to sarmad.moalem@vapyranalytics.com"
 
       )
 
@@ -54,7 +56,7 @@ ui <- dashboardPage(
 server <- function(input, output) {
   ### dataframe load
   # map_switch <- reactiveValue()
-  res <- readOGR(dsn = "./rprog/water_system_with_scores_updated_3.geojson", layer="water_system_with_scores_updated_3")
+  res <- st_read(dsn = "./water_system_with_scores_updated_3.geojson", layer="water_system_with_scores_updated_3")
 ### Render UI
   dropdown_input <- reactive({
     input$complianceOverageInput
@@ -64,9 +66,9 @@ server <- function(input, output) {
   output$complianceOverageOutput <- renderUI({
     selectInput(
       inputId = "complianceOverageInput", 
-      label = strong("Select Score Type:", style = "font-family: 'arial'; font-si28pt"),
-      choices =  c("Compliance Score", "Overage Score"),
-      selected = "Compliance Score"
+      label = strong("Select Percentile Type:", style = "font-family: 'arial'; font-si28pt"),
+      choices =  c("Compliance Percentile", "Overage Percentile"),
+      selected = "Compliance Percentile"
     )
   })
   
@@ -85,50 +87,66 @@ server <- function(input, output) {
    
     output$camap <- renderLeaflet(
       {
-        if(dropdown_input() == "Compliance Score") { 
-          binpal <-   colorBin("Blues", res$red_int, 9, pretty = FALSE) 
+        if(dropdown_input() == "Compliance Percentile") { 
+          binpal <-   colorBin("Reds", res$ave_score_red_lean_percentile, 9, pretty = FALSE) 
           map <- leaflet(res) %>%
             addTiles() %>%
             addPolygons(
-              stroke = FALSE,
+              stroke = TRUE,
               smoothFactor = 0.2,
               fillOpacity = 0.9,
               dashArray = "3",
-              color = ~binpal(red_int),
+              color = "black",
+              fillColor = ~binpal(ave_score_red_lean_percentile),
+              opacity = 1,
               popup = ~paste0(
                 "<b> Water System Number: <b>",
                 WATER_SYST,
                 "<br>",
                 "<b> Water System Name: <b>",
-                WATER_SY_1
+                WATER_SY_1,
+                "<br>",
+                "<b> Compliance Percentile: <b>",
+                ave_score_red_lean_percentile,
+                "<br>",
+                "<b> Overage Percentile: <b>",
+                overage_percentile
               )
             ) %>%
-            addLegend("bottomright", pal = binpal, values = ~red_int,
-                      title = "Legend",
+            addLegend("bottomright", pal = binpal, values = ~ave_score_red_lean_percentile,
+                      title = "Compliance Percentile",
                       opacity = 1
             ) %>%
             setView(lng = -119.417931, lat = 36.778259, zoom = 5)
           
         }   else { 
-          binpal <-   colorBin("Greens", res$red_int, 9, pretty = FALSE) 
+          binpal <-   colorBin("Purples", res$overage_percentile, 5, pretty = FALSE) 
           map <- leaflet(res) %>%
             addTiles() %>%
             addPolygons(
-              stroke = FALSE,
+              stroke = TRUE,
               smoothFactor = 0.2,
               fillOpacity = 0.9,
               dashArray = "3",
-              color = ~binpal(red_int),
+              opacity = 1,
+              color = "black",
+              fillColor = ~binpal(overage_percentile),
               popup = ~paste0(
                 "<b> Water System Number: <b>",
                 WATER_SYST,
                 "<br>",
                 "<b> Water System Name: <b>",
-                WATER_SY_1
+                WATER_SY_1,
+                "<br>",
+                "<b> Compliance Percentile: <b>",
+                ave_score_red_lean_percentile,
+                "<br>",
+                "<b> Overage Percentile: <b>",
+                overage_percentile
               )
             ) %>%
-            addLegend("bottomright", pal = binpal, values = ~red_int,
-                      title = "Legend",
+            addLegend("bottomright", pal = binpal, values = ~overage_percentile,
+                      title = "Overage Percentile",
                       opacity = 1
             ) %>%
             setView(lng = -119.417931, lat = 36.778259, zoom = 5)

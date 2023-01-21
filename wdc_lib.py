@@ -42,9 +42,9 @@ def sql_query_conn(dbname='', basepath=''):
             else:
                 print('New branch must be registered')
                 raise OSError
-        elif getpass.getuser() == 'Jessa Rego':  # update
+        elif getpass.getuser() == 'Jessa Rego':
             repo_head_name = Repository(
-                'C:/Users/Jessa Rego/Desktop/VapyrApp').head.name  # update
+                'C:/Users/Jessa Rego/Desktop/VapyrApp').head.name
             if repo_head_name == 'refs/heads/Development':
                 db_path = r'C:\Users\Jessa Rego\Dropbox\Water Data Challenge 2022\wdc_2022_test.db'
             elif repo_head_name == 'refs/heads/main':
@@ -69,6 +69,7 @@ def sql_query_conn(dbname='', basepath=''):
 
 
 def water_system_type(smplpttype):
+    # These were confirmed with DDW personnel
     water_system = {"GW": ("WL", "SP", "SS", "CC", "CS",
                            "OT"), "SW": ("IN", "RS", "IG")}
     water_type = ''
@@ -80,7 +81,7 @@ def water_system_type(smplpttype):
     if water_type == '':
         water_type = 'pswt'
     return water_type
-    print(water_type)
+
 # print(water_system_type(('IN')))
 # print(water_system_type(('IG')))
 # print(water_system_type(('CC')))

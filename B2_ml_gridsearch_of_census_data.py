@@ -132,6 +132,7 @@ def decision_tree_regression(X, y):
 
 def random_forest_regression(X, y):
     # # # Random Forest:
+
     # Splitting the dataset into the Training set and Test set
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=83)
@@ -174,8 +175,6 @@ def catboost_regression(X, y):
     df_gridsearch['params'] = df_gridsearch['params'].astype("str")
     df_gridsearch['regression'] = 'catboost'
 
-    # print(grid_search.best_estimator_)
-
     return df_gridsearch
 
 
@@ -212,19 +211,6 @@ def ws_contam_mean_handler(independent_sets, contam_info_dict):
             ws_contam_mean_cols = contam_info_dict[ind_set[16:]]
             break
     return [ws_contam_mean_cols, ws_ind_set_name]
-
-# print('contam_mean_handler_test')
-# active_sources = wdc.facilities_to_review()
-# contam_dict = wdc.contam_info_organizer(len_of_source_facs=len(active_sources))
-# start_contam_mean = time.perf_counter()
-# # ws_contam_mean_columns = ws_contam_mean_handler(['regulating', 'race', 'hh_size', 'bdeg', 'hh_income', 'hh_own',
-# #                                                  'rent_as_pct', 'insurance', 'gw_sw', 'area', 'population', 'ws_contam_means_sampled_and_reviewed_and_has_mcl'], contam_dict)
-# ws_contam_mean_columns = ws_contam_mean_handler(['regulating', 'race', 'hh_size', 'bdeg', 'hh_income', 'hh_own',
-#                                                  'rent_as_pct', 'insurance', 'gw_sw', 'area', 'population'], contam_dict)
-# fin_contam_mean = time.perf_counter()
-# print(ws_contam_mean_columns)
-# print(fin_contam_mean - start_contam_mean)
-# raise ValueError
 
 
 def data_and_regression_selector(data, independent_sets, dependent_variable, contam_info_dict):
@@ -407,7 +393,7 @@ if __name__ == '__main__':
                                    'arealand', 'areawater',
                                                'population',
                                                'basename', 'centlat', 'centlon', 'funcstat', 'geoid', 'geo_id', 'hu100', 'intptlat', 'intptlon', 'lsadc', 'mtfcc', 'name', 'objectid', 'oid', 'sabl_pwsid', 'state_clas', 'county', 'proportion', 'state', 'tract', 'water_system_number',
-                                               'water_system_name', 'ws_id', 'water_system_number', 'water_system_name']  # Moved dependent variables from this list to a couple lines down so that they're the last four items
+                                               'water_system_name', 'ws_id', 'water_system_number', 'water_system_name']
     df_wsp_score_census_columns.extend(ws_mean_headers)
     df_wsp_score_census_columns.extend(
         ['ave_red_lean_score', 'ave_score_red_lean_percentile', 'ave_overage_rate', 'overage_percentile'])
@@ -426,7 +412,7 @@ if __name__ == '__main__':
                        'regulating',
                        'arealand', 'areawater',
                        'population',
-                       'ws_id', 'water_system_number', 'water_system_name']  # Moved dependent variables from this list to a couple lines down so that they're the last four items
+                       'ws_id', 'water_system_number', 'water_system_name']
     dataset_columns.extend(ws_mean_headers)
     dataset_columns.extend(
         ['ave_red_lean_score', 'ave_score_red_lean_percentile', 'ave_overage_rate', 'overage_percentile'])
@@ -558,20 +544,6 @@ if __name__ == '__main__':
     active_sources = wdc.facilities_to_review()
     contam_dict = wdc.contam_info_organizer(
         len_of_source_facs=len(active_sources))
-
-    # test = data_and_regression_selector(
-    #     dataset, ['ws_contam_means_sampled_and_reviewed_and_has_mcl', 'regulating', 'race', 'hh_size', 'bdeg', 'hh_income', 'hh_own',
-    #               'rent_as_pct', 'insurance', 'ws_characteristics', 'area', 'population'], 'compliance_score', contam_info_dict=contam_dict)  # r2: -3701.774428671103
-    # test = data_and_regression_selector(
-    #     dataset, ['regulating', 'hh_size', 'ws_characteristics', 'population'], 'compliance_score', contam_info_dict=contam_dict)  # r2: 0.25772863324490525
-    # test = data_and_regression_selector(dataset, ['regulating', 'race', 'hh_size', 'bdeg', 'hh_income', 'rent_as_pct',
-    #                                     'insurance', 'area', 'population'], 'compliance_percentile', contam_info_dict=contam_dict)  # r2:
-    # test = data_and_regression_selector(dataset, ['regulating', 'bdeg', 'hh_income', 'hh_own', 'rent_as_pct', 'insurance', 'area', 'population'], 'compliance_percentile', contam_info_dict=contam_dict)  # r2:
-    # test = data_and_regression_selector(dataset, ['regulating', 'hh_size', 'bdeg', 'hh_income', 'hh_own', 'area', 'population'], 'compliance_percentile', contam_info_dict=contam_dict)  # r2:
-    # test = data_and_regression_selector(dataset, ['regulating', 'race', 'bdeg', 'hh_income', 'rent_as_pct', 'area', 'population'], 'compliance_percentile', contam_info_dict=contam_dict)  # r2:
-
-    # print(test)
-    # raise ValueError
 
     dependent_vars_to_test = [
         'compliance_score', 'compliance_percentile', 'overage_rate', 'overage_percentile']

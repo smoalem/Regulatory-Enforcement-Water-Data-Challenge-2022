@@ -19,7 +19,7 @@ library(sf)
 # #
 ui <- dashboardPage(
   dashboardHeader(
-    title="Water System Regulatory Compliance Review Map"
+    title="Compliance Map"
   ),
   dashboardSidebar(
     width = 350,
@@ -33,16 +33,17 @@ ui <- dashboardPage(
       id = "tab_selected",
       tabPanel(
         title = "Map",
-        leafletOutput("camap")
-
-      ),
-
-      tabPanel(
-        title = "Data Source",
-        tags$a(href="https://github.com/smoalem/Regulatory-Enforcement-Water-Data-Challenge-2022", "Reulatory Enforcement Github Page"),
+        leafletOutput("camap"),
+        h1("Water Data Challenge 2022 Regulatory Enforcement Project"),
+        tags$a(href="https://drive.google.com/file/d/1GJOEwcDa1TcWtsLLSiX46527PFjf-y_m/view?usp=sharing", "WDC Regulatory Enforcement Project SQL file"),
         br(),
-        "Please post your questions to sarmad.moalem@vapyranalytics.com"
-
+        br(),
+        tags$a(href="https://github.com/smoalem/Regulatory-Enforcement-Water-Data-Challenge-2022", "Regulatory Enforcement Github Page"),
+        br(),
+        br(),
+        "For any questions about the project, please email: sarmad.moalem@vapyranalytics.com"
+        
+        
       )
 
     )

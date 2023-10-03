@@ -74,6 +74,44 @@ def fac_details_get(url):
 # print(finish-start)
 # raise ValueError
 
+################### THIS WAS THE OLD SYNTAX FOR THE NEW URL, MAY NEED TO DELETE ##################
+# def results_hyperlinks(facility_and_wsp_info):
+#     test_columns = ['id_x', 'ws_id', 'activity_status_date', 'activity_xldate', 'state_asgn_id_number', 'facility_name', 'facility_type', 'sample_point_type', 'activity_status', 'activity_reason_text', 'classification',
+#                     'facility_hyperlink', 'id_y', 'water_system_number', 'water_system_name', 'ddw_name', 'ptype', 'pserved', 'ccount', 'service_area_code', 'type', 'primary_source_water_type', 'url', 'ws_link_suffix']
+#     print(facility_and_wsp_info)
+#     facility_and_wsp_info_df = pd.DataFrame(
+#         [facility_and_wsp_info], columns=test_columns)
+#     new_prefix = 'https://sdwis.waterboards.ca.gov/PDWW/JSP/WSamplingResultsByStoret.jsp?SystemNumber='
+#     new_suffix = '&Analyte=&ChemicalName=&begin_date=&end_date=&mDWW='
+#     old_prefix = 'https://sdwis.waterboards.ca.gov/PDWW/JSP/SamplingResultsByStoret.jsp?SystemNumber='
+#     old_suffix = '&Storet=&ChemicalName=&begin_date=&end_date='
+
+#     ws_num = facility_and_wsp_info_df['water_system_number'].iloc[0]
+#     ws_num_no_ca = ws_num[2:]
+#     ws_link_suffix = facility_and_wsp_info_df['ws_link_suffix'].iloc[0]
+#     tinwsys_number = re.search(
+#         r"tinwsys_is_number=(.*?)&tinwsys_st_code=", ws_link_suffix).group(1)
+#     ws_name = facility_and_wsp_info_df['water_system_name'].iloc[0]
+#     ws_name_with_pluses = ws_name.replace(' ', '+')
+#     fac_hyperlink = facility_and_wsp_info_df['facility_hyperlink'].iloc[0]
+#     wsf_is_number = fac_hyperlink[fac_hyperlink.index(
+#         '&tinwsf_is_number=') + 18:fac_hyperlink.index('&tinwsf_st_code')]
+#     fac_name = facility_and_wsp_info_df['facility_name'].iloc[0]
+#     fac_name_with_pluses = fac_name.replace(' ', '+')
+#     state_id_number = facility_and_wsp_info_df['state_asgn_id_number'].iloc[0]
+
+#     old_hyperlink = (old_prefix + ws_num_no_ca + '&SamplingPointID=' +
+#                      state_id_number + '&SamplingPointName=' + fac_name_with_pluses + old_suffix).replace('#', '')
+#     new_hyperlink = (new_prefix + ws_num_no_ca + '&tinwsys_is_number=' + tinwsys_number + '&FacilityID=' + state_id_number + '&WSFNumber=' + wsf_is_number +
+#                      '&SamplingPointID=' + state_id_number + '&SystemName=' + ws_name_with_pluses + '&SamplingPointName=' + fac_name_with_pluses + new_suffix).replace('#', '')
+#     facility_and_wsp_info_df = facility_and_wsp_info_df.assign(
+#         old_results_hyperlink=[old_hyperlink])
+#     facility_and_wsp_info_df = facility_and_wsp_info_df.assign(
+#         new_results_hyperlink=[new_hyperlink])
+#     facility_and_wsp_info_df = facility_and_wsp_info_df.loc[:, ['id_x', 'ws_id', 'activity_status_date', 'activity_xldate', 'state_asgn_id_number', 'facility_name', 'facility_type',
+#                                                                 'sample_point_type', 'activity_status', 'activity_reason_text', 'classification', 'facility_hyperlink', 'old_results_hyperlink', 'new_results_hyperlink']]
+#     return facility_and_wsp_info_df.values.tolist()
+
 
 def results_hyperlinks(facility_and_wsp_info):
     test_columns = ['id_x', 'ws_id', 'activity_status_date', 'activity_xldate', 'state_asgn_id_number', 'facility_name', 'facility_type', 'sample_point_type', 'activity_status', 'activity_reason_text', 'classification',
@@ -102,6 +140,8 @@ def results_hyperlinks(facility_and_wsp_info):
 
     old_hyperlink = (old_prefix + ws_num_no_ca + '&SamplingPointID=' +
                      state_id_number + '&SamplingPointName=' + fac_name_with_pluses + old_suffix).replace('#', '')
+    # new_hyperlink = (new_prefix + ws_num_no_ca + '&tinwsys_is_number=' + tinwsys_number + '&FacilityID=' + state_id_number + '&WSFNumber=' + wsf_is_number +
+    #                  '&SamplingPointID=' + state_id_number + '&SystemName=' + ws_name_with_pluses + '&SamplingPointName=' + fac_name_with_pluses + new_suffix).replace('#', '')
     new_hyperlink = (new_prefix + ws_num_no_ca + '&tinwsys_is_number=' + tinwsys_number + '&FacilityID=' + state_id_number + '&WSFNumber=' + wsf_is_number +
                      '&SamplingPointID=' + state_id_number + '&SystemName=' + ws_name_with_pluses + '&SamplingPointName=' + fac_name_with_pluses + new_suffix).replace('#', '')
     facility_and_wsp_info_df = facility_and_wsp_info_df.assign(
@@ -111,6 +151,19 @@ def results_hyperlinks(facility_and_wsp_info):
     facility_and_wsp_info_df = facility_and_wsp_info_df.loc[:, ['id_x', 'ws_id', 'activity_status_date', 'activity_xldate', 'state_asgn_id_number', 'facility_name', 'facility_type',
                                                                 'sample_point_type', 'activity_status', 'activity_reason_text', 'classification', 'facility_hyperlink', 'old_results_hyperlink', 'new_results_hyperlink']]
     return facility_and_wsp_info_df.values.tolist()
+
+
+conn = vdl.sql_query_conn()
+all_facilities_dataframe = pd.read_sql_query(
+    "SELECT * from facilities", conn)
+all_water_system_primary_dataframe = pd.read_sql_query(
+    "SELECT * from water_system_primary", conn)
+conn.close()
+all_facs_and_wsp = pd.DataFrame.merge(
+    all_facilities_dataframe, all_water_system_primary_dataframe, left_on='ws_id', right_on='id', how='left').values.tolist()
+
+
+raise ValueError
 
 
 if __name__ == '__main__':

@@ -1,0 +1,14 @@
+name: compliance-enforcement-mapping-wdc-2022
+title: compliance-enforcement-mapping-wdc-2022
+username:
+account: vapyrwdc2022
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 8000918
+bundleId: 6720019
+url: https://vapyrwdc2022.shinyapps.io/compliance-enforcement-mapping-wdc-2022/
+when: 1673410537.54719
+lastSyncTime: 1673410537.5472
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: .RData|geo_json_example.R|map_sample.R|r_mario_tutorial/app.R|r_mario_tutorial/server.R|r_mario_tutorial/ui.R|swirl_inst.R|All_Course_Files

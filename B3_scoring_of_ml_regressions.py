@@ -661,5 +661,8 @@ if __name__ == '__main__':
     ps.print_stats()
     print(s.getvalue())
 
+# Jae 4/8/23
+# Seconds: 77903.4512753
 
-# Seconds: 69684.5779637
+# Jae 7/21/23
+# Seconds: 80760.5827387

@@ -551,9 +551,8 @@ if __name__ == '__main__':
         sublist_times = []
         dependent_index = dependent_vars_to_test.index(dependent)
         for sublist in var_comb_sublists:
-
             sublist_index = var_comb_sublists.index(sublist)
-            print(sublist_index)
+            print(f"sublist {sublist_index} of {len(var_comb_sublists)}")
 
             regression_columns = ['independent_variables', 'params', 'mean_test_score', 'std_test_score', 'rank_test_score', 'regression',
                                   'mean_fit_time', 'std_fit_time', 'mean_score_time', 'std_score_time',
@@ -595,3 +594,10 @@ if __name__ == '__main__':
     ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
     ps.print_stats()
     print(s.getvalue())
+
+# Jae 4/7/23
+# Seconds: 97232.38557970001
+
+
+# Jae Test 7/18 -   /23
+# Seconds: 99461.0936649

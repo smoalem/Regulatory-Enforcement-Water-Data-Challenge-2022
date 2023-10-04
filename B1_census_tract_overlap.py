@@ -96,7 +96,7 @@ if __name__ == '__main__':
     start = time.perf_counter()
     # REDACTED, request API key from:
     # https://www.census.gov/content/dam/Census/library/publications/2020/acs/acs_api_handbook_2020_ch02.pdf#:~:text=%E2%80%A2%20Click%20on%20the%20Request%20a%20KEY%20box,Bureau%20data%20sets%20using%20a%20variety%20of%20tools
-    api_key = '########################################'
+    api_key = 'b7494a4c81f71cea60234908731d6a2283854752'
     c = Census(api_key, year=2020)
     my_shape_geojson = census_tracts_geojson(api_key, c)
     # my_shape_geojson is a dictionary with dict_keys(['type', 'name', 'crs', 'features'])
@@ -207,6 +207,7 @@ if __name__ == '__main__':
 
     old_len_df_store = len(df_store)
     for system in subset_json['features']:
+        total_loop = len(subset_json['features'])
         total_counter += 1
         overlap = overlap_generator(system, vlist, c)
         old_len_df_store = len(df_store)
@@ -241,7 +242,7 @@ if __name__ == '__main__':
         print(
             f'Time so far: {current_time-start}. Counter: {total_counter}. Average time per system: {(current_time-start)/total_counter}.')
         print(
-            f'Total: {total_counter}. No overlap: {no_overlap_counter}. Null geometry: {null_geometry_counter}.')
+            f'Total: {total_counter} / {total_loop}. No overlap: {no_overlap_counter}. Null geometry: {null_geometry_counter}.')
     comm_water_systems_with_no_shape_file_dict = {'pwsid': comm_water_systems_with_no_shape_file, 'reason': [
         'No shapefile match.']*len(comm_water_systems_with_no_shape_file)}
 
@@ -265,3 +266,10 @@ if __name__ == '__main__':
     ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
     ps.print_stats()
     print(s.getvalue())
+
+
+# Jae Test 4/5/23
+# 5883.104610999995
+
+# Jae Test 7/18/23
+# 6581.0317608000005

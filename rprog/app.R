@@ -37,9 +37,7 @@ ui <- dashboardPage(
         h1("Water Data Challenge 2022 Regulatory Enforcement Project"),
         tags$a(href="https://drive.google.com/file/d/1GJOEwcDa1TcWtsLLSiX46527PFjf-y_m/view?usp=sharing", "WDC Regulatory Enforcement Project SQL file"),
         br(),
-        br(),
         tags$a(href="https://github.com/smoalem/Regulatory-Enforcement-Water-Data-Challenge-2022", "Regulatory Enforcement Github Page"),
-        br(),
         br(),
         "For any questions about the project, please email: sarmad.moalem@vapyranalytics.com"
         
@@ -99,7 +97,7 @@ server <- function(input, output) {
               dashArray = "3",
               color = "black",
               fillColor = ~binpal(ave_score_red_lean_percentile),
-              opacity = 1,
+              opacity = 0,
               popup = ~paste0(
                 "<b> Water System Number: <b>",
                 WATER_SYST,
@@ -129,7 +127,7 @@ server <- function(input, output) {
               smoothFactor = 0.2,
               fillOpacity = 0.9,
               dashArray = "3",
-              opacity = 1,
+              opacity = 0,
               color = "black",
               fillColor = ~binpal(overage_percentile),
               popup = ~paste0(

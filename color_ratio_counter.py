@@ -11,7 +11,7 @@ import cProfile
 import pstats
 import io
 from pstats import SortKey
-import math
+from math import sqrt
 import regex as re
 import wdc_lib
 from pstats import SortKey
@@ -25,8 +25,14 @@ from sklearn.ensemble import RandomForestRegressor
 from catboost import CatBoostRegressor
 from xgboost import XGBRegressor
 from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
-from itertools import combinations
+from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 
+from itertools import combinations
+from scipy.stats import expon # import exponential function from scipy stats
+import warnings
+
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 def linear_regression(X, y):
     # # # Multiple Linear Regression:
@@ -52,11 +58,14 @@ def linear_regression(X, y):
 def logarithmic_regression(X, y):
     # # # Multiple Linear Regression:
     # Splitting the dataset into the Training set and Test set
-    y_log = np.log(y + 1)
+    # y_log = np.log(y + 1)
+    y_log = np.log(y + 0.01) 
+    # modify y log 
+    # y_log = expon.pdf(X, scale=2) + 1 * 100
 
     # raise ValueError
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y_log, test_size=0.2, random_state=83)
+        X, y_log, test_size=0.3, random_state=83)
 
     # Gridsearch Cross-Validation
     regressor = LinearRegression()
@@ -66,6 +75,11 @@ def logarithmic_regression(X, y):
         'normalize': [True, False]       # Whether to normalize the input features or not
     }
     # param_grid = {}
+    # from sklearn.model_selection import RandomizedSearchCV
+    # grid_search = RandomizedSearchCV(regressor,
+    #                            param_grid,
+    #                    scoring='r2', cv=7, n_jobs=-1, n_iter=1000)
+
     grid_search = GridSearchCV(estimator=regressor,
                                param_grid=param_grid,
                                scoring='r2',
@@ -75,6 +89,19 @@ def logarithmic_regression(X, y):
     df_gridsearch = pd.DataFrame(grid_search.cv_results_)
     df_gridsearch['params'] = df_gridsearch['params'].astype("str")
     df_gridsearch['regression'] = 'log'
+
+    regressor.fit(X_train, y_train)
+    # Predicting test set results
+    y_pred = regressor.predict(X_test)
+
+    # Scoring the model
+    r2 = r2_score(y_test, y_pred)  # r-squared
+    adj_r2 = 1-(1-r2)*(len(y)-1)/(len(y)-1-X.shape[1])  # adjusted r-squared
+    mae = mean_absolute_error(y_test, y_pred)  # mean absolute error
+    mape = mae * 100  # mean absolute percentage error
+    mse = mean_squared_error(y_test, y_pred)  # mean squared error
+    rmse = sqrt(mse)  # root mean squared error
+    print([r2, adj_r2,mae,mape,mse,rmse])
     return df_gridsearch
 
 def polynomial_regression(X, y):
@@ -281,13 +308,12 @@ def color_ratio_reg_contam(reg_contam):
 
 
 if __name__ == "__main__":
-    pr = cProfile.Profile()
-    pr.enable()
-    start = time.perf_counter()
+    # pr = cProfile.Profile()
+    # pr.enable()
+    # start = time.perf_counter()
 
     # reg_query = "SELECT DISTINCT regulation FROM user_effective_timeline"
     # contam_query = "SELECT DISTINCT contam_id FROM user_effective_timeline"
-
     # conn = wdc_lib.sql_query_conn()
     # reg_list = pd.read_sql_query(reg_query, conn)["regulation"].values.tolist()
     # contam_list = pd.read_sql_query(contam_query, conn)["contam_id"].values.tolist()
@@ -296,6 +322,8 @@ if __name__ == "__main__":
     # reg_list.remove("NA")
     # reg_list.remove("General practice")
 
+    # print(reg_list)
+    # print(contam_list)
     # reg_contam_list = []
 
     # for r in reg_list:
@@ -360,35 +388,74 @@ if __name__ == "__main__":
         # print(contaminant[0])
         color_w_complexity_contam = color[:4] + contaminant[0] + color[4:]
         color_with_complexity_contam_list.append(color_w_complexity_contam)
+        color_w_complexity_contam.insert(0, min_samples * years_reviewed)
+
         # print(len(color_w_complexity_contam))
-        if len(color_w_complexity_contam) == 16:
-            print(color_w_complexity_contam)
+        # if len(color_w_complexity_contam) == 16:
+        #     print(color_w_complexity_contam)
         # regulation, samples, 
-    reg_contam_df = pd.DataFrame(color_with_complexity_contam_list, columns=["regulation", "min_reg_samples", "reg_time_span", "contam_id", "reg_xldate", "contam_group","method", "dlr", "mcl", "min_xldate", "max_xldate", "unique_sampled_and_reviewed_facilities", "green", "red", "yellow"])
+
+
+    reg_contam_df = pd.DataFrame(color_with_complexity_contam_list, columns=["Complexity", "regulation", "min_reg_samples", "reg_time_span", "contam_id", "reg_xldate", "contam_group","method", "dlr", "mcl", "min_xldate", "max_xldate", "unique_sampled_and_reviewed_facilities", "green", "red", "yellow"])
     convert_dict = {"contam_id": str, "reg_xldate": np.int64, "min_xldate": np.int64, "max_xldate": np.int64 }
     reg_contam_df = reg_contam_df.astype(convert_dict)
-    X = reg_contam_df.iloc[:, :3].values
-    y = reg_contam_df.iloc[:, -3].values
+
+    
+    # variable_sets_dict = {'regulating': ["regulation", "min_reg_samples", "reg_time_span"] ,'contam':["contam_id", "reg_xldate", "contam_group","method", "dlr", "mcl", "min_xldate", "max_xldate", "unique_sampled_and_reviewed_facilities"] }
+
+    # variable_sets = ['regulating', 'contam']
+
+    # var_combinations = list()
+    # for n in range(len(variable_sets) + 1):
+    #     var_combinations += list(combinations(variable_sets, n))
+
+    # var_combinations.remove(())
+ 
+    # print(var_combinations)
+    # raise ValueError
+
+    # X_indices = [[]]
+
+
+
+
+    # X_vars = [(0, 4, [1]), (4,-3, [0,2,3]), (0, -3, [1,4,6,7])]
+    df_gridsearch_results = []
+    # SUCCESS?
+    # X = reg_contam_df.iloc[:, var[0]:var[1]].values
+    # X = reg_contam_df.iloc[:, [0,1,4]].values # complexity, reg, contam id - 14  decision_tree  5.912e-01
+    X = reg_contam_df.iloc[:, [0,1]].values # complexity, reg - .log - 0.7276 
+    # X = reg_contam_df.iloc[:, [0]].values # complexity- log - 0.64 
+    X = reg_contam_df.iloc[:, [1]].values # reg - log .7276 same as 0, 1
+    X = reg_contam_df.iloc[:, [1, 9]].values # reg, mcl - log .7265
+    X = reg_contam_df.iloc[:, [1, 8]].values # reg, dlr - log               False           False        7.283e-01
+    X = reg_contam_df.iloc[:, [1, 8, 9]].values # reg, dlr mcl -  log               False           False        7.275e-01
+    X = reg_contam_df.iloc[:, [1, 6]].values # regulation and contam group - log - .7241
+    X = reg_contam_df.iloc[:, [1, 5]].values # regulation and reg xladate - log - .7136
+    X = reg_contam_df.iloc[:, [0, 1, 5, 6, 8, 9]].values # complexity, reg, reg_xldate, contam group, dlr, mcl - log  w/ fit intcpt True        7.287e-01
+    y = reg_contam_df.iloc[:, -3].values 
     print(X)
     print(len(X[0]))
     print(y)
-    # ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(
-    #         sparse=False), [0, 3, 5, 6])], remainder='passthrough')
     ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(
-            sparse=False), [0])], remainder='passthrough')    
+            sparse=False), [1, 3])], remainder='passthrough')    
+
+    # ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(
+    #         sparse=False), [0])], remainder='passthrough')    
     X = np.array(ct.fit_transform(X))
-    print("TRANSFORMED")
-    print(X)
-    print(len(X[0]))
+    # print("TRANSFORMED")
+    # print(X)
+    # print(len(X[0]))
     # Taking care of missing data
     imputer = SimpleImputer(missing_values=np.nan, strategy='mean')
     imputer.fit(X[:])
     # Transform method then does the replacement of all the nan with mean
     X[:] = imputer.transform(X[:])
-    df_gridsearch_results = []
 
     times = []
     start_regs = time.perf_counter()
+
+
     df_gridsearch_results.append(linear_regression(X, y))
 
     linear_fin = time.perf_counter()
@@ -439,484 +506,15 @@ if __name__ == "__main__":
     print(f'xg_reg took: {times[-1]}')
 
     df_all_gridsearch = pd.concat(df_gridsearch_results)
+    print("CONCAT")
+
     with pd.option_context('display.max_rows', None,
-                       'display.max_columns', None,
-                       'display.precision', 3,
-                       ):
-        print(df_all_gridsearch[['regression', "mean_test_score",]])
-    print(df_all_gridsearch.columns.tolist())
+                    'display.max_columns', None,
+                    'display.precision', 3,
+                    ):
+        print(df_all_gridsearch[['regression', 'param_fit_intercept', 'param_normalize', "mean_test_score"]].to_string())
+    # print(df_all_gridsearch.columns.tolist())
     print("Total time:")
     print(time.perf_counter() - start)
-        # print(color_ratio_df.to_string())
+  
 
-    # prev_start = start
-
-    # terminal_date_list = vdl.terminal_dates_to_review()
-
-    # conn = vdl.sql_query_conn()
-    # df_facilities = pd.read_sql_query(f"SELECT * from 'facilities'", conn)
-    # df_contam = pd.read_sql_query(f"SELECT * from 'contam_info'", conn)
-    # # Just for getting the unique facid/contamid combos that were actually reviewed
-    # df_timeline = pd.read_sql_query(
-    #     f"SELECT fac_id, contam_id from 'user_period_timeline' WHERE terminal_date = {terminal_date_list[-1][2]}",
-    #     conn,
-    # )
-    # # df_timeline = pd.read_sql_query(
-    # #     f"SELECT fac_id, contam_id from 'user_period_timeline'", conn
-    # # )
-    # conn.close()
-    # list of all unique facilities
-#     fac_list = df_timeline["fac_id"].unique().tolist()
-#     contam_list = (
-#         df_timeline["contam_id"].unique().tolist()
-#     )  # list of all unique contam_id
-#     df_timeline = pd.DataFrame()  # this is to free up memory
-
-#     all_combos_list = []
-#     for f in fac_list:
-#         fac_activity_status_date = df_facilities[df_facilities["id"] == f][
-#             "activity_xldate"
-#         ].values[0]
-#         for c in contam_list:
-#             reg_effective_date = int(
-#                 df_contam[df_contam["id"] == c]["reg_xldate"].values[0]
-#             )
-#             for t in terminal_date_list:
-#                 if (
-#                     int(t[2]) >= reg_effective_date
-#                     and int(t[2]) >= fac_activity_status_date
-#                 ):
-#                     all_combos_list.append([f, c, t])
-
-#     # all_combos_list = [[f, c] for f in fac_list for c in contam_list]
-#     write_table_name = "score_and_percentile_fac_contam"
-#     all_combos_sublists = []
-#     for i in range(0, len(all_combos_list), 100000):
-#         all_combos_sublists.append(all_combos_list[i : i + 100000])
-
-#     print(f"Ready to start, time so far is: {time.perf_counter() - start}")
-#     print(
-#         f"Total of {len(all_combos_list)} fac_contam_td combos across {len(all_combos_sublists)} sublists"
-#     )
-#     timeline_start = time.perf_counter()
-#     df_compliance = pd.DataFrame()
-#     conn = vdl.sql_query_conn()
-#     df_facilities = pd.read_sql_query(f"SELECT * from facilities", conn)[
-#         ["id", "ws_id"]
-#     ]
-#     conn.close()
-#     df_facilities.rename(columns={"id": "fac_id"}, inplace=True)
-
-#     # print(f"Number of sublists: {len(all_combos_sublists)}")
-#     # for sublist in all_combos_sublists:
-#     #     print(f"Starting loop {all_combos_sublists.index(sublist)+1}")
-#     #     sublist_start = time.perf_counter()
-#     #     dict_compliance = {
-#     #         "fac_id": [],
-#     #         "contam_id": [],
-#     #         "terminal_date": [],
-#     #         "red_lean_score": [],
-#     #         "yellow_lean_score": [],
-#     #         "target_timeline": [],
-#     #         "num_time_segments": [],
-#     #         "num_track_switches": [],
-#     #     }
-#     #     last_td = terminal_date_list[-1]
-#     #     last_td_list = [last_td] * len(sublist)
-#     #     with concurrent.futures.ProcessPoolExecutor() as executor:  # This is to use multiprocessing
-#     #         results = executor.map(fac_contam_score, sublist, last_td_list)
-#     #         end_results_creation = time.perf_counter()
-#     #         print(f"Results creation: {end_results_creation-sublist_start}")
-#     #         for result in results:
-#     #             dict_compliance["fac_id"].append(result[0])
-#     #             dict_compliance["contam_id"].append(result[1])
-#     #             dict_compliance["terminal_date"].append(result[2])
-#     #             dict_compliance["red_lean_score"].append(result[3])
-#     #             dict_compliance["yellow_lean_score"].append(result[4])
-#     #             dict_compliance["target_timeline"].append(result[5])
-#     #             dict_compliance["num_time_segments"].append(result[6])
-#     #             dict_compliance["num_track_switches"].append(result[7])
-#     #         df_compliance = pd.DataFrame.from_dict(dict_compliance)
-#     #         end_results_iteration = time.perf_counter()
-#     #         print(f"Results iteration: {end_results_iteration-end_results_creation}")
-
-#     #         start_write_to_sql = time.perf_counter()
-#     #         df_compliance = df_compliance.astype(
-#     #             {
-#     #                 "fac_id": int,
-#     #                 "contam_id": int,
-#     #                 "terminal_date": int,
-#     #                 "red_lean_score": str,
-#     #                 "yellow_lean_score": str,
-#     #                 "target_timeline": str,
-#     #                 "num_time_segments": str,
-#     #                 "num_track_switches": str,
-#     #             }
-#     #         )
-#     #         df_compliance = pd.merge(
-#     #             df_facilities, df_compliance, on="fac_id", how="inner"
-#     #         )
-#     #         append_or_replace = "replace" * (prev_start == start) + "append" * (
-#     #             prev_start != start
-#     #         )
-#     #         conn = vdl.sql_query_conn()
-#     #         df_compliance.to_sql(
-#     #             write_table_name, conn, if_exists=append_or_replace, index=False
-#     #         )
-#     #         conn.close()
-#     #         df_compliance = pd.DataFrame()
-#     #         end_write_to_sql = time.perf_counter()
-#     #         prev_start = end_write_to_sql
-#     #         print(f"Time so far in score determination: {end_write_to_sql - start}")
-#     # vdl.create_index(write_table_name, fac_id="ASC", contam_id="ASC", terminal_date="ASC")
-#     # compliance_scores_percentiles_columns = [
-#     #     "fac_id",
-#     #     "contam_id",
-#     #     "terminal_date",
-#     #     "red_lean_score",
-#     #     "yellow_lean_score",
-#     #     "red_lean_percentile",
-#     #     "yellow_lean_percentile",
-#     #     "target_timeline",
-#     #     "num_time_segments",
-#     #     "num_track_switches",
-#     # ]
-#     # for t in terminal_date_list:
-#     #     for contam in contam_list:
-#     #         contam_start = time.perf_counter()
-#     #         conn = vdl.sql_query_conn()
-#     #         df_compliance = pd.read_sql_query(
-#     #             f"SELECT * FROM score_and_percentile_fac_contam WHERE contam_id = {str(contam)} AND terminal_date = {t[2]}",
-#     #             conn,
-#     #         )
-#     #         conn.close()
-#     #         compliance_scores_percentiles_list = []
-#     #         compliance_tups = [tuple(x) for x in df_compliance.to_numpy()]
-#     #         df_comparison = df_compliance[
-#     #             (df_compliance["red_lean_score"] != "TBD")
-#     #             & (df_compliance["red_lean_score"] != "PMD")
-#     #         ]
-#     #         red_lean_list = np.array(
-#     #             df_comparison["red_lean_score"].astype(float).to_list()
-#     #         )
-#     #         red_lean_list_of_lists = [red_lean_list] * len(compliance_tups)
-#     #         yellow_lean_list = np.array(
-#     #             df_comparison["yellow_lean_score"].astype(float).to_list()
-#     #         )
-#     #         yellow_lean_list_of_lists = [yellow_lean_list] * len(compliance_tups)
-
-#     #         with concurrent.futures.ProcessPoolExecutor() as executor:  # This is to use multiprocessing
-#     #             results = executor.map(
-#     #                 fac_contam_score_percentile,
-#     #                 compliance_tups,
-#     #                 red_lean_list_of_lists,
-#     #                 yellow_lean_list_of_lists,
-#     #             )
-#     #             end_results_creation = time.perf_counter()
-#     #             print(f"Results creation: {end_results_creation-contam_start}")
-#     #             for result in results:
-#     #                 compliance_scores_percentiles_list.append(result)
-#     #             end_results_iteration = time.perf_counter()
-#     #             print(
-#     #                 f"Results iteration: {end_results_iteration-end_results_creation}"
-#     #             )
-#     #             print(
-#     #                 f"Time so far (fac_id/contam_id percentile loop {contam_list.index(contam) + 1}): {end_results_iteration - start}"
-#     #             )
-
-#     #     df_compliance_scores_percentiles = pd.DataFrame(
-#     #         compliance_scores_percentiles_list,
-#     #         columns=compliance_scores_percentiles_columns,
-#     #     )
-#     #     start_write_to_sql = time.perf_counter()
-#     #     df_compliance_scores_percentiles = df_compliance_scores_percentiles.astype(
-#     #         {
-#     #             "fac_id": int,
-#     #             "contam_id": int,
-#     #             "red_lean_score": str,
-#     #             "yellow_lean_score": str,
-#     #             "red_lean_percentile": str,
-#     #             "yellow_lean_percentile": str,
-#     #             "target_timeline": str,
-#     #             "num_time_segments": str,
-#     #             "num_track_switches": str,
-#     #         }
-#     #     )
-#     #     df_compliance_scores_percentiles = pd.merge(
-#     #         df_facilities, df_compliance_scores_percentiles, on="fac_id", how="inner"
-#     #     )
-#     #     conn = vdl.sql_query_conn()
-#     #     df_compliance_scores_percentiles.to_sql(
-#     #         "score_and_percentile_fac_contam", conn, if_exists="replace", index=False
-#     #     )
-#     #     conn.close()
-#     #     end_write_to_sql = time.perf_counter()
-
-#     # vdl.create_index(
-#     #     "score_and_percentile_fac_contam",
-#     #     fac_id="ASC",
-#     #     ws_id="ASC",
-#     #     contam_id="ASC",
-#     #     terminal_date="ASC",
-#     # )
-#     # fac_id_contam_id_finish = time.perf_counter()
-#     # print(
-#     #     f"Total time to finish fac-contam percentile loop {contam_list.index(contam) + 1} of {len(contam_list)}: {fac_id_contam_id_finish - start}"
-#     # )
-
-#     # Begin generating average of facility scores in order to determine the overall percentile for the facility
-#     for t in terminal_date_list:
-#         start_average_facs = time.perf_counter()
-#         conn = vdl.sql_query_conn()
-#         df_fac_percentiles = pd.read_sql_query(
-#             f"SELECT * FROM score_and_percentile_fac_contam WHERE terminal_date = {t[2]}",
-#             conn,
-#         )
-#         conn.close()
-#         fac_list = (
-#             df_fac_percentiles["fac_id"].unique().tolist()
-#         )  # list of all unique facilities
-#         dict_percentile_averages = {
-#             "fac_id": [],
-#             "terminal_date": [],
-#             "ave_red_lean_score": [],
-#             "ave_yellow_lean_score": [],
-#             "ave_target_timeline": [],
-#             "ave_method_priority_level": [],
-#             "ave_num_time_segments": [],
-#             "ave_num_track_switches": [],
-#         }
-#         terminal_date = t[2]
-#         td_list = [terminal_date] * len(fac_list)
-#         with concurrent.futures.ProcessPoolExecutor() as executor:
-#             results = executor.map(ave_fac_score, fac_list, td_list)
-#             end_results_creation = time.perf_counter()
-#             print(
-#                 f"Results creation for average facility scores: {end_results_creation-start_average_facs}"
-#             )
-#             for result in results:
-#                 dict_percentile_averages["fac_id"].append(result[0])
-#                 dict_percentile_averages["terminal_date"].append(result[1])
-#                 dict_percentile_averages["ave_red_lean_score"].append(result[2])
-#                 dict_percentile_averages["ave_yellow_lean_score"].append(result[3])
-#                 dict_percentile_averages["ave_target_timeline"].append(result[4])
-#                 dict_percentile_averages["ave_method_priority_level"].append(result[5])
-#                 dict_percentile_averages["ave_num_time_segments"].append(result[6])
-#                 dict_percentile_averages["ave_num_track_switches"].append(result[7])
-#             df_percentile_averages = pd.DataFrame(dict_percentile_averages)
-#             end_results_iteration = time.perf_counter()
-#             print(
-#                 f"For terminal dates {t}, Results iteration for average facility scores: {end_results_iteration-end_results_creation}"
-#             )
-#         df_percentile_averages = pd.DataFrame(dict_percentile_averages)
-#         df_percentile_averages = df_percentile_averages.astype(
-#             {
-#                 "fac_id": int,
-#                 "terminal_date": int,
-#                 "ave_red_lean_score": str,
-#                 "ave_yellow_lean_score": str,
-#                 "ave_target_timeline": str,
-#                 "ave_method_priority_level": str,
-#                 "ave_num_time_segments": str,
-#                 "ave_num_track_switches": str,
-#             }
-#         )
-#         df_percentile_averages = pd.merge(
-#             df_facilities, df_percentile_averages, on="fac_id", how="inner"
-#         )
-#         conn = vdl.sql_query_conn()
-#         df_percentile_averages.to_sql(
-#             "score_and_percentile_ave_fac", conn, if_exists="replace", index=False
-#         )
-#         conn.close()
-#         ave_fac_score_finish = time.perf_counter()
-#         print(
-#             f"Total time to finish average facility scores with terminal_date {t}: {ave_fac_score_finish - start_average_facs}"
-#         )
-#     vdl.create_index("score_and_percentile_ave_fac", fac_id="ASC", terminal_date="ASC")
-#     # !!!!!!!!!!!!! SKIP THIS FOR NOW
-#     # conn = vdl.sql_query_conn()
-#     # df_compliance = pd.read_sql_query(
-#     #     f"SELECT * from score_and_percentile_ave_fac", conn
-#     # )
-#     # conn.close()
-#     # compliance_tups = [tuple(x) for x in df_compliance.to_numpy()]
-#     # df_comparison = df_compliance[
-#     #     (df_compliance["ave_red_lean_score"] != "TBD")
-#     #     & (df_compliance["ave_red_lean_score"] != "PMD")
-#     # ]
-#     # red_lean_list = np.array(
-#     #     df_comparison["ave_red_lean_score"].astype(float).to_list()
-#     # )
-#     # red_lean_list_of_lists = [red_lean_list] * len(compliance_tups)
-#     # yellow_lean_list = np.array(
-#     #     df_comparison["ave_yellow_lean_score"].astype(float).to_list()
-#     # )
-#     # yellow_lean_list_of_lists = [yellow_lean_list] * len(compliance_tups)
-#     # compliance_scores_percentiles_list = []
-#     # compliance_scores_percentiles_columns = [
-#     #     "fac_id",
-#     #     "ws_id",
-#     #     "ave_red_lean_score",
-#     #     "ave_yellow_lean_score",
-#     #     "ave_score_red_lean_percentile",
-#     #     "ave_score_yellow_lean_percentile",
-#     #     "ave_target_timeline",
-#     #     "ave_method_priority_level",
-#     #     "ave_num_time_segments",
-#     #     "ave_num_track_switches",
-#     # ]
-#     # with concurrent.futures.ProcessPoolExecutor() as executor:
-#     #     results = executor.map(
-#     #         percentile_of_ave_fac_score,
-#     #         compliance_tups,
-#     #         red_lean_list_of_lists,
-#     #         yellow_lean_list_of_lists,
-#     #     )
-#     #     end_results_creation = time.perf_counter()
-#     #     print(f"Results creation: {end_results_creation-ave_fac_score_finish}")
-#     #     for result in results:
-#     #         compliance_scores_percentiles_list.append(result)
-#     #     end_results_iteration = time.perf_counter()
-#     #     print(f"Results iteration: {end_results_iteration-end_results_creation}")
-#     #     print(f"Time so far fac percentile: {end_results_iteration - start}")
-
-#     # df_ave_fac_scores_percentiles = pd.DataFrame(
-#     #     compliance_scores_percentiles_list,
-#     #     columns=compliance_scores_percentiles_columns,
-#     # )
-#     # df_ave_fac_scores_percentiles = df_ave_fac_scores_percentiles.astype(
-#     #     {
-#     #         "fac_id": int,
-#     #         "ws_id": int,
-#     #         "ave_red_lean_score": str,
-#     #         "ave_yellow_lean_score": str,
-#     #         "ave_score_red_lean_percentile": str,
-#     #         "ave_score_yellow_lean_percentile": str,
-#     #         "ave_target_timeline": str,
-#     #         "ave_method_priority_level": str,
-#     #         "ave_num_time_segments": str,
-#     #         "ave_num_track_switches": str,
-#     #     }
-#     # )
-
-#     # conn = vdl.sql_query_conn()
-#     # df_ave_fac_scores_percentiles.to_sql(
-#     #     "score_and_percentile_ave_fac", conn, if_exists="replace", index=False
-#     # )
-#     # conn.close()
-#     # vdl.create_index("score_and_percentile_ave_fac", fac_id="ASC", ws_id="ASC")
-#     # ave_fac_percentile_finish = time.perf_counter()
-#     # print(
-#     #     f"Total time to finish average facility percentile: {ave_fac_percentile_finish - ave_fac_score_finish}"
-#     # )
-
-#     # # facility overage calculation:
-#     # conn = vdl.sql_query_conn()
-#     # fac_ws_list = pd.read_sql_query(
-#     #     f"SELECT * from 'score_and_percentile_ave_fac'", conn
-#     # ).values.tolist()
-#     # conn.close()
-
-#     # fac_overage_tally = []
-#     # start_overage_tally = time.perf_counter()
-#     # with concurrent.futures.ProcessPoolExecutor() as executor:
-#     #     results = executor.map(facility_overage_counter, fac_ws_list)
-#     #     end_results_creation = time.perf_counter()
-#     #     for result in results:
-#     #         fac_overage_tally.append(result)
-
-#     # df_fac_overage = pd.DataFrame(
-#     #     fac_overage_tally, columns=["fac_id", "ws_id", "overage_total", "overage_rate"]
-#     # )
-
-#     # df_fac_overage[["fac_id", "ws_id"]] = (
-#     #     df_fac_overage[["fac_id", "ws_id"]].astype(str).astype(int)
-#     # )
-#     # df_fac_overage[["overage_total", "overage_rate"]] = df_fac_overage[
-#     #     ["overage_total", "overage_rate"]
-#     # ].astype(str)
-#     # conn = vdl.sql_query_conn()
-#     # df_fac_overage.to_sql(
-#     #     "overage_count_and_percentile_fac", conn, if_exists="replace", index=False
-#     # )
-#     # conn.close()
-#     # finish_overage_tally = time.perf_counter()
-#     # print(df_fac_overage)
-#     # print(finish_overage_tally - start_overage_tally)
-
-#     # facility_overage_rates_list = df_fac_overage["overage_rate"].values.tolist()
-#     # filtered_values = ["PMD", "TBD"]
-#     # filtered_fac_overage_rates_list = []
-
-#     # for fac in facility_overage_rates_list:
-#     #     if fac not in filtered_values:
-#     #         filtered_fac_overage_rates_list.append(float(fac))
-
-#     # print(len(facility_overage_rates_list))
-#     # print(len(filtered_fac_overage_rates_list))
-
-#     # fac_overage_list = df_fac_overage.values.tolist()
-#     # fac_overage_percentile_list = []
-
-#     # with concurrent.futures.ProcessPoolExecutor() as executor:  # This is to use multiprocessing
-#     #     results = executor.map(
-#     #         facility_overage_percentile,
-#     #         fac_overage_list,
-#     #         [filtered_fac_overage_rates_list] * len(fac_overage_list),
-#     #     )
-#     #     end_results_creation = time.perf_counter()
-#     #     for result in results:
-#     #         fac_overage_percentile_list.append(result)
-#     # df_fac_overage_percentile = pd.DataFrame(
-#     #     fac_overage_percentile_list,
-#     #     columns=[
-#     #         "fac_id",
-#     #         "ws_id",
-#     #         "overage_total",
-#     #         "overage_rate",
-#     #         "overage_percentile",
-#     #     ],
-#     # )
-#     # df_fac_overage_percentile[["fac_id", "ws_id"]] = (
-#     #     df_fac_overage[["fac_id", "ws_id"]].astype(str).astype(int)
-#     # )
-#     # df_fac_overage_percentile[
-#     #     ["overage_total", "overage_rate", "overage_percentile"]
-#     # ] = df_fac_overage_percentile[
-#     #     ["overage_total", "overage_rate", "overage_percentile"]
-#     # ].astype(
-#     #     str
-#     # )
-#     # conn = vdl.sql_query_conn()
-#     # df_fac_overage_percentile.to_sql(
-#     #     "overage_count_and_percentile_fac", conn, if_exists="replace", index=False
-#     # )
-#     # conn.close()
-#     # vdl.create_index("overage_count_and_percentile_fac", fac_id="ASC", ws_id="ASC")
-
-#     # !!!!!!!!!!!!!!!!!!!! END OF SKIPPED SECTION
-
-#     print("FINISH ")
-
-#     finish = time.perf_counter()
-#     print(f"Seconds: {finish - start}")
-#     pr.disable()
-#     s = io.StringIO()
-#     sortby = SortKey.CUMULATIVE
-#     ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-#     ps.print_stats()
-#     print(s.getvalue())
-
-# # Jae Test 12/18/22
-# # 1296.8722965999914
-
-
-# # Jae Test 4/3/23
-# # 996.4312396999958
-
-# # Jae test 7/18/23
-# # Seconds: 1013.047556599995
-
-# # Jae Test 8/05 - 08/06/23
-# # 36037.6826302 +  677.6308779000537
